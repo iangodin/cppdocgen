@@ -100,11 +100,16 @@ class Cleanup:
         kind = method['kind'].title()
         name = method['name']
         new_lines = []
-        new_lines.append( '```' )
-        new_lines.append( f'{name} (' )
-        for arg in method['arguments']:
-            new_lines.append( '     ' + arg['type'] + ' ' + arg['name'] )
-        new_lines.append( ')' )
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        args = method['arguments']
+        if len( args ) == 0 :
+            new_lines.append( f'{name} ();' )
+        else:
+            new_lines.append( f'{name} (' )
+            argwidth = 4 + max( [ len( a['type'] ) for a in method['arguments'] ] )
+            for arg in method['arguments']:
+                new_lines.append( arg['type'].rjust( argwidth, ' ' ) + ' ' + arg['name'] )
+            new_lines.append( ');' )
         new_lines.append( r'```' )
         return new_lines
 
@@ -113,8 +118,8 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( '```' )
-        new_lines.append( f'{name} ()' )
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( f'{name} ();' )
         new_lines.append( r'```' )
         return new_lines
 
@@ -123,10 +128,15 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( '```' )
-        new_lines.append( f'{result} {name} (' )
-        for arg in method['arguments']:
-            new_lines.append( '     ' + arg['type'] + ' ' + arg['name'] )
-        new_lines.append( ')' )
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        args = method['arguments']
+        if len( args ) == 0 :
+            new_lines.append( f'{result} {name} ();' )
+        else:
+            new_lines.append( f'{result} {name} (' )
+            argwidth = 4 + max( [ len( a['type'] ) for a in args] )
+            for arg in args:
+                new_lines.append( arg['type'].rjust( argwidth, ' ' ) + ' ' + arg['name'] )
+            new_lines.append( ');' )
         new_lines.append( r'```' )
         return new_lines

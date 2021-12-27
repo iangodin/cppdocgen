@@ -26,10 +26,7 @@ class CPPDatabase:
         newid = self.cursor.lastrowid
         if kind == 'file':
             for n in node['declarations']:
-                if n['kind'] == 'namespace':
-                    self.write( n, 0 )
-                else:
-                    self.write( n, newid )
+                self.write( n, 0 )
         elif kind == 'namespace':
             for n in node['declarations']:
                 self.write( n, newid )

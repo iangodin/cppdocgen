@@ -1,5 +1,6 @@
 
 from clang.cindex import AccessSpecifier
+from pathlib import Path
 
 def compare_location( loc1, loc2 ):
     if loc1.line < loc2.line:
@@ -9,14 +10,14 @@ def compare_location( loc1, loc2 ):
     return False
 
 class Parser:
-    def __init__( parser, comments, files ):
+    def __init__( parser, comments, topdir ):
         parser.comments = comments
         parser.group = None
         parser.warned = set()
-        parser.files = files
+        parser.topdir = topdir
 
     def __call__( parser, node ):
-        if str( node.location.file ) not in parser.files:
+        if node.location.file != None and parser.topdir not in Path( str( node.location.file ) ).resolve().parents:
             return None
         k = node.kind.name
         method = getattr( Parser, node.kind.name, None )
@@ -139,6 +140,9 @@ class Parser:
         parser.group = prev_group
         return result
 
+    def CLASS_TEMPLATE( parser, node ):
+        return parser.CLASS_DECL( node )
+
     def CLASS_DECL( parser, node ):
         comments = parser.gather_comments( node.extent.start )
         prev_group = parser.group
@@ -173,6 +177,9 @@ class Parser:
         return None
 
     def CXX_METHOD( parser, node ):
+        if node.lexical_parent.kind.name != 'CLASS_DECL':
+            print( "CONSTRUCTOR " + str( node.spelling ) + " => " + str( node.lexical_parent.spelling ) )
+            return None
         comments = parser.gather_comments( node.extent.start )
         prev_group = parser.group
         parser.group = None
@@ -191,7 +198,8 @@ class Parser:
 
     def CONSTRUCTOR( parser, node ):
         result = parser.CXX_METHOD( node )
-        result['kind'] = 'constructor'
+        if result:
+            result['kind'] = 'constructor'
         return result
 
     def FIELD_DECL( parser, node ):

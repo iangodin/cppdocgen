@@ -4,5 +4,5 @@ from pathlib import Path
 from htmlgen import HTMLGenerator
 
 gen = HTMLGenerator( 'cppinfo.db', Path( 'site' ) )
-gen.generate( Path( 'global' ) )
+gen.generate()
 

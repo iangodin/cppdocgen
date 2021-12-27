@@ -7,7 +7,7 @@
 {% include 'toc.html' %}
 
 <div class="col-9 align-self-stretch px-3">
-<h1>Class {{ node.name }}</h1>
+<h1>Globals</h1>
 {{ node.html }}
 {%- for n in node.children %}
 <h2>{{n.kind.title()}} {{n.name}}</h2>
@@ -16,6 +16,5 @@
 </div>
 
 </div>
-
 
 {% include 'epilogue.html' %}

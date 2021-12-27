@@ -25,6 +25,16 @@ nav.nav a {
     color: white;
 }
 
+nav hr {
+    color: white;
+    margin: 0.5rem 0;
+}
+
+.nav-link {
+    padding-right: 0;
+    padding-left: 0;
+}
+
 .nav-link:hover {
-    color: #ddf;
+    color: white;
 }

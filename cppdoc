@@ -30,6 +30,9 @@ def main():
     global opts
 
     parser = OptionParser("usage: %prog [options] {filename} [clang-args*]")
+    parser.add_option("", "--dir", dest="dir",
+                      help="Document files inside this directory",
+                      metavar="N", type=str, default=None)
     parser.disable_interspersed_args()
     (opts, args) = parser.parse_args()
 
@@ -43,7 +46,7 @@ def main():
 
     if len( tu.diagnostics ) > 0:
         pprint( [get_diag_info(d) for d in  tu.diagnostics] )
-    parser = Parser( get_comments( tu.cursor.get_tokens() ), args + [ 'None' ] )
+    parser = Parser( get_comments( tu.cursor.get_tokens() ), Path( opts.dir ).resolve() )
     cppinfo = parser( tu.cursor )
     cleanup = Cleanup()
     cleanup( cppinfo )
