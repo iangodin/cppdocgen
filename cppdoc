@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+
+from clang.cindex import Index, CursorKind, TokenKind, AccessSpecifier
+from pprint import pprint
+from parser import Parser
+from cppdb import CPPDatabase
+from cleanup import Cleanup
+from htmlgen import HTMLGenerator
+from pathlib import Path
+import yaml
+
+def get_diag_info(diag):
+    return { 'severity' : diag.severity,
+             'location' : diag.location,
+             'spelling' : diag.spelling,
+             'ranges' : diag.ranges,
+             'fixits' : diag.fixits }
+
+def get_comments( tokens ):
+    result = []
+    for tok in tokens:
+        if  tok.kind == TokenKind.COMMENT:
+            result.append( tok )
+    return result
+
+
+def main():
+    from optparse import OptionParser, OptionGroup
+
+    global opts
+
+    parser = OptionParser("usage: %prog [options] {filename} [clang-args*]")
+    parser.disable_interspersed_args()
+    (opts, args) = parser.parse_args()
+
+    if len(args) == 0:
+        parser.error( 'invalid number arguments' )
+
+    index = Index.create()
+    tu = index.parse(None, args)
+    if not tu:
+        parser.error( "unable to load input" )
+
+    if len( tu.diagnostics ) > 0:
+        pprint( [get_diag_info(d) for d in  tu.diagnostics] )
+    parser = Parser( get_comments( tu.cursor.get_tokens() ), args + [ 'None' ] )
+    cppinfo = parser( tu.cursor )
+    cleanup = Cleanup()
+    cleanup( cppinfo )
+
+    print( yaml.dump( cppinfo, sort_keys=False) )
+
+    gen = HTMLGenerator( Path( 'site' ) )
+    gen( cppinfo, Path() )
+
+    #cppdb = CPPDatabase( 'cppinfo.db' )
+    #cppdb( cppinfo )
+    #cppdb.close()
+
+if __name__ == '__main__':
+    main()
+

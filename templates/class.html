@@ -1,0 +1,11 @@
+<section>
+  <h1>class {{ node['name'] }}</h1>
+  {%- for n in node.declarations %}
+    <li>{{ n.kind + ' ' + n.name }}</li>
+  {%- endfor %}
+</section>
+{#
+{% for n in node.declarations %}
+{{- generate( n ) }}
+{%- endfor %}
+#}

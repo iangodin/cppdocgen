@@ -1,0 +1,156 @@
+#! /usr/bin/env python3
+
+import sqlite3
+from pathlib import Path
+
+class DBGenerator:
+    def __init__( self, dbfile ):
+        self.connection = sqlite3.connect( dbfile )
+        self.cursor = self.connection.cursor()
+        self.hierarchy = {}
+
+    def close( self ):
+        self.connection.close()
+
+    def generate_toc( self ):
+        lines = []
+        lines.append( 'Global' )
+        lines.append( '<ul>' )
+        lines = lines + self.gen_toc( 1, f'WHERE parent_id = 0', [] )
+        lines.append( '</ul>' )
+        return lines
+
+    def gen_toc( self, indent, where, parents ):
+        tabs = '  ' * indent
+        rows = self.cursor.execute( f'SELECT id, name, kind FROM nodes {where};' ).fetchall()
+        lines = []
+        lines.append( f'{tabs}<ul>' )
+        for row in rows:
+            rowid = row[0]
+            name = row[1]
+            kind = row[2].title()
+            self.hierarchy[rowid] = parents
+            if kind == 'File':
+                continue
+            elif kind == 'Namespace':
+                lines.append( f'{tabs}  <li> {kind} {name}' )
+                lines = lines + self.gen_toc( indent + 1, f'WHERE parent_id={rowid}', parents + [name] )
+                lines.append( f'{tabs}  </li>' )
+            else:
+                lines.append( f'{tabs}  <li> {kind} {name}</li>' )
+        lines.append( f'{tabs}</ul>' )
+        return lines
+
+    def generate_namespaces( self ):
+        nss = self.cursor.execute( f'SELECT id, name, kind, html FROM nodes WHERE kind="namespace";' ).fetchall()
+        for ns in nss:
+            nsid = ns[0]
+            name = ns[1]
+            kind = ns[2].title()
+            html = ns[3]
+            sub = self.cursor.execute( f'SELECT name FROM nodes WHERE parent_id={nsid} AND kind="namespace" ORDER BY id;' ).fetchall()
+            cls = self.cursor.execute( f'SELECT name FROM nodes WHERE parent_id={nsid} AND kind="class" ORDER BY id;' ).fetchall()
+
+            path = Path( 'site' ) / 'namespaces'
+            path = path.joinpath( *self.hierarchy[nsid] )
+            path.mkdir(parents=True,exist_ok=True)
+            path = path / ( name + '.html' )
+            with open( path, 'w' ) as f:
+                print( html, file=f )
+
+                if len( sub ) > 0:
+                    print( '<section>', file=f )
+                    print( f'<h2>Child Namespaces</h2>', file=f )
+                    print( '<ul>', file=f )
+                    for n in sub:
+                        print( '<li>' + n[0] + '</li>', file=f )
+                    print( '</ul>', file=f )
+                    print( '</section>', file=f )
+
+                if len( cls ) > 0:
+                    print( '<section>', file=f )
+                    print( f'<h2>Classes</h2>', file=f )
+                    print( '<ul>', file=f )
+                    for n in cls:
+                        print( '<li>' + n[0] + '</li>', file=f )
+                    print( '</ul>', file=f )
+                    print( '</section>', file=f )
+
+    def generate_classes( self ):
+        classes = self.cursor.execute( f'SELECT id, name, kind, html FROM nodes WHERE kind="class" ORDER BY id;' ).fetchall()
+        for cls in classes:
+            clsid = cls[0]
+            name = cls[1]
+            kind = cls[2].title()
+            html = cls[3]
+            path = Path( 'site' ) / 'namespaces'
+            path = path.joinpath( *self.hierarchy[clsid] )
+            path.mkdir(parents=True,exist_ok=True)
+            path = path / ( name + '.html' )
+            with open( path, 'w' ) as f:
+                self.generate_class_toc( clsid, f )
+                print( html, file=f )
+                self.generate_members( clsid, 'constructor', 'Constructors', f )
+                self.generate_members( clsid, 'destructor', 'Destructor', f )
+                self.generate_groups( clsid, f )
+                self.generate_members( clsid, 'method', 'Methods', f )
+                self.generate_members( clsid, 'field', 'Fields', f )
+
+    def generate_members( self, clsid, kind, title, f, extra_html = '' ):
+        kindsel = f'AND kind="{kind}"' if kind != None else ''
+        members = self.cursor.execute( f'SELECT html FROM nodes WHERE parent_id={clsid} {kindsel} ORDER BY id;' ).fetchall()
+        if len( members ) > 0:
+            print( '<section>', file=f )
+            if title != '':
+                print( f'<h2>{title}</h2>', file=f )
+            print( extra_html, file=f )
+            for c in members:
+                print( c[0], file=f )
+            print( '</section>', file=f )
+
+    def generate_groups( self, clsid, f ):
+        groups = self.cursor.execute( f'SELECT id, name, html FROM nodes WHERE parent_id={clsid} AND kind="group" ORDER BY id;' ).fetchall()
+        for group in groups:
+            gid = group[0]
+            name = group[1]
+            html = group[2]
+            self.generate_members( gid, None, '', f, html )
+
+    def generate_class_toc( self, clsid, f ):
+        print( '<nav><ul>', file=f )
+        classes = self.cursor.execute( f'SELECT name, kind FROM nodes WHERE id={clsid} AND kind="class" ORDER BY id;' ).fetchall()
+        for cls in classes:
+            name = cls[0]
+            kind = cls[1].title()
+            self.generate_members_toc( clsid, 'constructor', 'Constructors', f )
+            self.generate_members_toc( clsid, 'destructor', 'Destructor', f )
+            self.generate_groups_toc( clsid, f )
+            self.generate_members_toc( clsid, 'method', 'Methods', f )
+            self.generate_members_toc( clsid, 'field', 'Fields', f )
+        print( '</ul></nav>', file=f )
+
+    def generate_members_toc( self, clsid, kind, title, f ):
+        kindsel = f'AND kind="{kind}"' if kind != None else ''
+        members = self.cursor.execute( f'SELECT name FROM nodes WHERE parent_id={clsid} {kindsel} ORDER BY id;' ).fetchall()
+        if len( members ) > 0:
+            print( f'<li>{title}<ul>', file=f )
+            for c in members:
+                print( '  <li>' + c[0] + '</li>', file=f )
+            print( '</ul></li>', file=f )
+        elif kind == None:
+            print( f'<li>{title}</li>', file=f )
+
+    def generate_groups_toc( self, clsid, f ):
+        groups = self.cursor.execute( f'SELECT id, name FROM nodes WHERE parent_id={clsid} AND kind="group" ORDER BY id;' ).fetchall()
+        for group in groups:
+            gid = group[0]
+            name = group[1]
+            self.generate_members_toc( gid, None, name, f )
+
+gen = DBGenerator( 'cppinfo.db' )
+lines = gen.generate_toc()
+for line in lines:
+    print( line )
+
+gen.generate_namespaces()
+gen.generate_classes()

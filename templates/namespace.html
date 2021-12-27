@@ -1,0 +1,8 @@
+<section>
+  <h1>namespace {{ node['name'] }}</h1>
+  <ul>
+  {%- for n in node.declarations %}
+  <li><a href="{{parent}}/{{n.name}}.html">{{ n.kind + ' ' + n.name }}</a></li>
+  {%- endfor %}
+  </ul>
+</section>
