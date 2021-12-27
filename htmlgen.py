@@ -28,13 +28,13 @@ class HTMLGenerator:
         node['children'] = children
 
     def generate_node( self, node, parent ):
-        print( "PROCESSING NODE " + node['name'] )
-        filename = self.topdir / parent / ( node['name'] + '.html' )
-        filename.parent.mkdir( parents = True, exist_ok = True )
-        template = self.env.get_template( node['kind'] + ".html" )
-        htmlData = template.render( node=node, parents=parent.parts );
-        with filename.open( 'w' ) as f:
-            f.write( htmlData )
+        if node['kind'] in [ 'class', 'namespace' ]:
+            filename = self.topdir / parent / ( node['name'] + '.html' )
+            filename.parent.mkdir( parents = True, exist_ok = True )
+            template = self.env.get_template( node['kind'] + ".html" )
+            htmlData = template.render( node=node, parents=parent.parts );
+            with filename.open( 'w' ) as f:
+                f.write( htmlData )
 
         iterate = getattr( self, 'gen_' + node['kind'], None )
         if iterate:
@@ -44,7 +44,6 @@ class HTMLGenerator:
         pathname = parent / node['name']
         for n in node['children']:
             self.generate_node( n, pathname )
-
 
     def gen_namespace( self, node, parent ):
         pathname = parent / node['name']

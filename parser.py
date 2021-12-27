@@ -1,6 +1,7 @@
 
 from clang.cindex import AccessSpecifier
 from pathlib import Path
+from pprint import pprint
 
 def compare_location( loc1, loc2 ):
     if loc1.line < loc2.line:
@@ -20,7 +21,7 @@ class Parser:
         if node.location.file != None and parser.topdir not in Path( str( node.location.file ) ).resolve().parents:
             return None
         k = node.kind.name
-        method = getattr( Parser, node.kind.name, None )
+        method = getattr( Parser, k, None )
         if method == None:
             method = Parser.unknown
         n = method( parser, node )
@@ -73,7 +74,8 @@ class Parser:
         parser.warned.add( node.kind.name )
         return {
             'kind': 'unknown',
-            'name': node.kind.name,
+            'name': node.spelling,
+            'info': str( node.kind.name ),
             'location': node.location
         }
 
@@ -178,7 +180,6 @@ class Parser:
 
     def CXX_METHOD( parser, node ):
         if node.lexical_parent.kind.name != 'CLASS_DECL':
-            print( "CONSTRUCTOR " + str( node.spelling ) + " => " + str( node.lexical_parent.spelling ) )
             return None
         comments = parser.gather_comments( node.extent.start )
         prev_group = parser.group
@@ -224,3 +225,32 @@ class Parser:
             'type': node.type.spelling,
         }
 
+    def FUNCTION_DECL( parser, node ):
+        comments = parser.gather_comments( node.extent.start )
+        prev_group = parser.group
+        parser.group = None
+        result = {
+            'kind': 'function',
+            'name': node.spelling,
+            'comments': comments,
+            'type': node.type.spelling,
+            'result': node.result_type.spelling,
+            'arguments': [parser( a ) for a in node.get_arguments()],
+        }
+        parser.skip_comments( node.extent.end )
+        parser.group = prev_group
+        return result
+
+    def TYPE_ALIAS_DECL( parser, node ):
+        comments = parser.gather_comments( node.extent.start )
+        prev_group = parser.group
+        parser.group = None
+        result = {
+            'kind': 'typedef',
+            'name': node.spelling,
+            'comments': comments,
+            'type': node.underlying_typedef_type.spelling,
+        }
+        parser.skip_comments( node.extent.end )
+        parser.group = prev_group
+        return result

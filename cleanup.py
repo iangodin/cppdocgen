@@ -96,6 +96,18 @@ class Cleanup:
     def display_default( self, node ):
         return []
 
+    def display_unknown( self, node ):
+        kind = node['kind'].title()
+        name = node['name']
+        info = node['info']
+        file = str( node['location'].file )
+        lineno = str( node['location'].line )
+        new_lines = []
+        new_lines.append( f'Defined in {file} at line {lineno}.' )
+        new_lines.append( '' )
+        new_lines.append( f'It\'s a kind of {info}.' )
+        return new_lines
+
     def display_constructor( self, method ):
         kind = method['kind'].title()
         name = method['name']
@@ -138,5 +150,33 @@ class Cleanup:
             for arg in args:
                 new_lines.append( arg['type'].rjust( argwidth, ' ' ) + ' ' + arg['name'] )
             new_lines.append( ');' )
+        new_lines.append( r'```' )
+        return new_lines
+
+    def display_function( self, fn ):
+        kind = fn['kind'].title()
+        name = fn['name']
+        result = fn['result']
+        new_lines = []
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        args = fn['arguments']
+        if len( args ) == 0 :
+            new_lines.append( f'{result} {name} ();' )
+        else:
+            new_lines.append( f'{result} {name} (' )
+            argwidth = 4 + max( [ len( a['type'] ) for a in args] )
+            for arg in args:
+                new_lines.append( arg['type'].rjust( argwidth, ' ' ) + ' ' + arg['name'] )
+            new_lines.append( ');' )
+        new_lines.append( r'```' )
+        return new_lines
+
+    def display_typedef( self, typedef ):
+        kind = typedef['kind'].title()
+        name = typedef['name']
+        result = typedef['type']
+        new_lines = []
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( f'using {name} = {result};' )
         new_lines.append( r'```' )
         return new_lines
