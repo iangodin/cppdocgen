@@ -1,0 +1,8 @@
+<nav aria-label="breadcrumb">
+  <ol class="breadcrumb">
+  {%- for part in parents %}
+    <li class="breadcrumb-item"><a href="#">{{part}}</a></li>
+  {%- endfor %}
+    <li class="breadcrumb-item active">{{node.name}}</li>
+  </ol>
+</nav>

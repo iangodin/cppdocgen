@@ -1,8 +1,31 @@
-<section>
-  <h1>namespace {{ node['name'] }}</h1>
-  <ul>
-  {%- for n in node.declarations %}
-  <li><a href="{{parent}}/{{n.name}}.html">{{ n.kind + ' ' + n.name }}</a></li>
+{% include 'prologue.html' %}
+
+{% include 'breadcrumb.html' %}
+
+<div class="d-flex flex-row flex-grow-1">
+<div class="col-2 align-self-stretch">
+<nav class="nav flex-column p-2">
+    <div class="d-flex justify-content-between"><span>{{node.name}}</span><span class="badge rounded-pill bg-light text-dark">{{node.kind}}</span></div>
+  {%- for n in node.children %}
+    <a class="d-flex justify-content-between nav-link" href="/{{'/'.join(parents)}}/{{node.name}}/{{n.name}}.html">
+        <span>{{n.name}}</span><span class="badge rounded-pill bg-light text-dark">{{n.kind}}</span>
+    </a>
   {%- endfor %}
-  </ul>
-</section>
+</nav>
+</div>
+
+<div class="col-10 align-self-stretch px-3">
+
+<h1>Namespace {{ node.name }}</h1>
+{{ node.html }}
+
+{%- for n in node.children %}
+<h2>{{n.kind.title()}} {{n.name}}</h2>
+{{ n.html }}
+{%- endfor %}
+
+</div>
+
+</div>
+
+{% include 'epilogue.html' %}

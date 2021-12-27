@@ -1,0 +1,30 @@
+
+.toppage {
+    height: 100vh;
+}
+
+h1 {
+    border-width: thin 0;
+    border-style: solid;
+    border-color: black;
+}
+
+h2, h3 {
+    border-width: 0 0 thin 0;
+    border-style: solid;
+    border-color: black;
+}
+
+nav.nav {
+    color: white;
+    background-color: #111;
+    height: 100%;
+}
+
+nav.nav a {
+    color: white;
+}
+
+.nav-link:hover {
+    color: #ddf;
+}

@@ -14,7 +14,7 @@ class CPPDatabase:
     def create_table( self ):
         self.cursor.execute( 'CREATE TABLE IF NOT EXISTS nodes ( id INTEGER PRIMARY KEY, parent_id INTEGER, kind VARCHAR(64), name VARCHAR(64), html TEXT, UNIQUE( parent_id, name ) );' )
 
-    def __call__( self, node, parent_id = 0 ):
+    def write( self, node, parent_id = 0 ):
         kind = node['kind']
         name = node['name']
         prehtml = self.cursor.execute( f'SELECT html FROM nodes WHERE parent_id={parent_id} AND name="{name}"' ).fetchone()
@@ -27,15 +27,15 @@ class CPPDatabase:
         if kind == 'file':
             for n in node['declarations']:
                 if n['kind'] == 'namespace':
-                    self( n, 0 )
+                    self.write( n, 0 )
                 else:
-                    self( n, newid )
+                    self.write( n, newid )
         elif kind == 'namespace':
             for n in node['declarations']:
-                self( n, newid )
+                self.write( n, newid )
         elif kind == 'group':
             for n in node['group']:
-                self( n, newid )
+                self.write( n, newid )
         elif kind == 'class':
             for n in node['members']:
-                self( n, newid )
+                self.write( n, newid )

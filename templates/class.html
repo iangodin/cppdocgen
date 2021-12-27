@@ -1,11 +1,32 @@
-<section>
-  <h1>class {{ node['name'] }}</h1>
-  {%- for n in node.declarations %}
-    <li>{{ n.kind + ' ' + n.name }}</li>
+{% include 'prologue.html' %}
+
+{% include 'breadcrumb.html' %}
+
+<div class="d-flex flex-row flex-grow-1">
+<div class="col-2 align-self-stretch">
+<nav class="nav flex-column">
+  class {{ node.name }}
+  <ul>
+  {%- for n in node.children %}
+    <a class="nav-link" href="/{{'/'.join(parents)}}/{{node.name}}/{{n.name}}.html">{{ n.kind + ' ' + n.name }}</a>
   {%- endfor %}
-</section>
-{#
-{% for n in node.declarations %}
-{{- generate( n ) }}
+  </ul>
+</nav>
+</div>
+
+<div class="col-10 align-self-stretch px-3">
+
+<h1>Class {{ node.name }}</h1>
+{{ node.html }}
+
+{%- for n in node.children %}
+<h2>{{n.kind.title()}} {{n.name}}</h2>
+{{ n.html }}
 {%- endfor %}
-#}
+
+</div>
+
+</div>
+
+
+{% include 'epilogue.html' %}

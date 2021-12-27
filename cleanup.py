@@ -94,38 +94,12 @@ class Cleanup:
         return new_lines
 
     def display_default( self, node ):
-        kind = node['kind'].title()
-        name = node['name']
-        new_lines = []
-        new_lines.append( f'### {kind} {name}' )
-        return new_lines
-
-    def display_group( self, node ):
-        kind = node['kind'].title()
-        name = node['name']
-        new_lines = []
-        new_lines.append( f'## {kind} {name}' )
-        return new_lines
-
-    def display_class( self, method ):
-        kind = method['kind'].title()
-        name = method['name']
-        new_lines = []
-        new_lines.append( f'# {kind} {name}' )
-        return new_lines
-
-    def display_namespace( self, method ):
-        kind = method['kind'].title()
-        name = method['name']
-        new_lines = []
-        new_lines.append( f'# {kind} {name}' )
-        return new_lines
+        return []
 
     def display_constructor( self, method ):
         kind = method['kind'].title()
         name = method['name']
         new_lines = []
-        new_lines.append( f'### {kind} {name}' )
         new_lines.append( '```' )
         new_lines.append( f'{name} (' )
         for arg in method['arguments']:
@@ -139,7 +113,6 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( f'### {kind} {name}' )
         new_lines.append( '```' )
         new_lines.append( f'{name} ()' )
         new_lines.append( r'```' )
@@ -150,7 +123,6 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( f'### {kind} {name}' )
         new_lines.append( '```' )
         new_lines.append( f'{result} {name} (' )
         for arg in method['arguments']:

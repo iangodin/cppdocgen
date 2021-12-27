@@ -48,14 +48,9 @@ def main():
     cleanup = Cleanup()
     cleanup( cppinfo )
 
-    print( yaml.dump( cppinfo, sort_keys=False) )
-
-    gen = HTMLGenerator( Path( 'site' ) )
-    gen( cppinfo, Path() )
-
-    #cppdb = CPPDatabase( 'cppinfo.db' )
-    #cppdb( cppinfo )
-    #cppdb.close()
+    cppdb = CPPDatabase( 'cppinfo.db' )
+    cppdb.write( cppinfo )
+    cppdb.close()
 
 if __name__ == '__main__':
     main()
