@@ -3,6 +3,9 @@ import sqlite3
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+def filter_kind( nodes, kind ):
+    return filter( lambda n: n['kind'] == kind, nodes )
+
 class HTMLGenerator:
     def __init__( self, dbfile, topdir ):
         self.topdir = topdir
@@ -11,6 +14,7 @@ class HTMLGenerator:
         self.env = Environment(
             loader = FileSystemLoader( "templates" )
         )
+        self.env.filters['filter_kind'] = filter_kind
 
     def generate( self ):
         node = { 'id': 0, 'name': 'global', 'kind': 'global', 'html': '' }
@@ -28,7 +32,7 @@ class HTMLGenerator:
         node['children'] = children
 
     def generate_node( self, node, parent ):
-        if node['kind'] in [ 'class', 'namespace' ]:
+        if node['kind'] in [ 'class', 'namespace', 'global' ]:
             filename = self.topdir / parent / ( node['name'] + '.html' )
             filename.parent.mkdir( parents = True, exist_ok = True )
             template = self.env.get_template( node['kind'] + ".html" )

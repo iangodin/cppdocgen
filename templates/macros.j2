@@ -1,0 +1,17 @@
+
+{% macro listing( title, kind, node ) %}
+<h2>{{title}}</h2>
+{%- for n in node.children | filter_kind( kind ) %}
+<h3>{{n.name}}</h3>
+{{ n.html }}
+{%- endfor %}
+{% endmacro %}
+
+{% macro standard_listing( node ) %}
+{{ listing( 'Namespaces', 'namespace', node ) }}
+{{ listing( 'Classes', 'class', node ) }}
+{{ listing( 'Types', 'typedef', node ) }}
+{{ listing( 'Functions', 'function', node ) }}
+{{ listing( 'Variables', 'variable', node ) }}
+{{ listing( 'Unknowns', 'unknown', node ) }}
+{% endmacro %}

@@ -1,4 +1,3 @@
-{% import 'macros.j2' as cpp %}
 {% include 'prologue.html' %}
 
 {% include 'breadcrumb.html' %}
@@ -8,9 +7,8 @@
 {% include 'toc.html' %}
 
 <div class="col-9 align-self-stretch px-3">
-<h1>Globals</h1>
+<h1>Function {{ node.name }}</h1>
 {{ node.html }}
-{{ cpp.standard_listing( node ) }}
 </div>
 
 </div>

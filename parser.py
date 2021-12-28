@@ -1,7 +1,19 @@
 
-from clang.cindex import AccessSpecifier
+from clang.cindex import AccessSpecifier, CursorKind
 from pathlib import Path
 from pprint import pprint
+import yaml
+
+def get_info(node, depth=0):
+    if depth < 3:
+        children = [get_info(c, depth+1)
+                    for c in node.get_children()]
+    else:
+        children = None
+    return { 'kind' : str( node.kind ),
+             'spelling' : node.spelling,
+             'location' : str( node.location ),
+             'children' : children }
 
 def compare_location( loc1, loc2 ):
     if loc1.line < loc2.line:
@@ -76,11 +88,19 @@ class Parser:
             'kind': 'unknown',
             'name': node.spelling,
             'info': str( node.kind.name ),
-            'location': node.location
+            'location': node.location,
         }
 
     def decls( parser, node ):
         return list( filter( None, map( parser, node.get_children() ) ) )
+
+    def arguments( parser, node ):
+        return list( filter( None, map( parser, filter( lambda n: n.kind == CursorKind.PARM_DECL, node.get_children() ) ) ) )
+
+    def templates( parser, node ):
+        def is_template( node ):
+            return node.kind == CursorKind.TEMPLATE_TYPE_PARAMETER or node.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER
+        return list( filter( None, map( parser, filter( is_template, node.get_children() ) ) ) )
 
     def compound( parser, node ):
         parents = []
@@ -225,6 +245,11 @@ class Parser:
             'type': node.type.spelling,
         }
 
+    def FUNCTION_TEMPLATE( parser, node ):
+        result = parser.FUNCTION_DECL( node )
+        result['templates'] = parser.templates( node )
+        return result
+
     def FUNCTION_DECL( parser, node ):
         comments = parser.gather_comments( node.extent.start )
         prev_group = parser.group
@@ -235,10 +260,28 @@ class Parser:
             'comments': comments,
             'type': node.type.spelling,
             'result': node.result_type.spelling,
-            'arguments': [parser( a ) for a in node.get_arguments()],
+            'arguments': parser.arguments( node ),
         }
         parser.skip_comments( node.extent.end )
         parser.group = prev_group
+        return result
+
+    def TEMPLATE_TYPE_PARAMETER( parser, node ):
+        result = {
+            'kind': 'template',
+            'name': node.spelling,
+            'comments': [],
+            'type': next( node.get_tokens() ).spelling,
+        }
+        return result
+
+    def TEMPLATE_NON_TYPE_PARAMETER( parser, node ):
+        result = {
+            'kind': 'template',
+            'name': node.spelling,
+            'comments': [],
+            'type': node.type.spelling,
+        }
         return result
 
     def TYPE_ALIAS_DECL( parser, node ):

@@ -1,6 +1,7 @@
 
 import re
 import markdown
+from pprint import pprint 
 
 class Cleanup:
     def __init__( self ):
@@ -154,11 +155,22 @@ class Cleanup:
         return new_lines
 
     def display_function( self, fn ):
+        pprint( fn )
         kind = fn['kind'].title()
         name = fn['name']
+        tmps = fn['templates'] if 'templates' in fn else None
         result = fn['result']
         new_lines = []
         new_lines.append( '``` {.cpp .linenums=1}' )
+        if tmps != None:
+            if len( tmps ) == 0:
+                new_lines.append( f'template <>' )
+            else:
+                tmpwidth = 4 + max( [len(t['type']) for t in tmps] )
+                new_lines.append( f'template < ' )
+                for t in tmps:
+                    new_lines.append( t['type'].rjust( tmpwidth, ' ' ) + ' ' + t['name'] )
+                new_lines.append( f'  >' )
         args = fn['arguments']
         if len( args ) == 0 :
             new_lines.append( f'{result} {name} ();' )
