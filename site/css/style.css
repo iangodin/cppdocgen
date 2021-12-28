@@ -9,10 +9,15 @@ h1 {
     border-color: black;
 }
 
-h2, h3 {
+h2 {
+    margin-top: 1em;
     border-width: 0 0 thin 0;
     border-style: solid;
     border-color: black;
+}
+
+h3 {
+    margin-top: 0.75em;
 }
 
 nav.nav {

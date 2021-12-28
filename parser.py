@@ -12,6 +12,8 @@ def get_info(node, depth=0):
         children = None
     return { 'kind' : str( node.kind ),
              'spelling' : node.spelling,
+             'displayname' : node.displayname,
+             'type' : node.type.spelling,
              'location' : str( node.location ),
              'children' : children }
 
@@ -24,6 +26,7 @@ def compare_location( loc1, loc2 ):
 
 class Parser:
     def __init__( parser, comments, topdir ):
+        pprint( comments )
         parser.comments = comments
         parser.group = None
         parser.warned = set()
@@ -171,6 +174,8 @@ class Parser:
 
     def CLASS_DECL( parser, node, is_template = False ):
         comments = parser.gather_comments( node.extent.start )
+        if node.spelling == 'mal_keyword':
+            pprint( comments )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -241,6 +246,29 @@ class Parser:
         parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
+
+    def FRIEND_DECL( parser, node ):
+        friend = parser( next( node.get_children() ) )
+        comments = parser.gather_comments( node.extent.start )
+        prev_group = parser.group
+        parser.group = None
+        result = {
+            'kind': 'friend',
+            'name': friend['name'],
+            'comments': comments,
+            'friend': friend,
+            'access': parser.access( node ),
+        }
+        parser.skip_comments( node.extent.end )
+        parser.group = prev_group
+        return result
+
+    def TYPE_REF( parser, node ):
+        return {
+            'kind': 'type',
+            'name': node.type.spelling,
+            'type': node.spelling,
+        }
 
     def PARM_DECL( parser, node ):
         return {

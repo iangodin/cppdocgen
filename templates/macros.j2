@@ -5,7 +5,9 @@
 <h2>{{title}}</h2>
 {%- for n in entries %}
 <h3>{{n.name}}</h3>
+<div class="mx-3">
 {{ n.html }}
+</div>
 {%- endfor %}
 {%- endif %}
 {% endmacro %}
@@ -24,8 +26,13 @@
 
 {% macro template_listing( node, display ) %}
 {{ display( 'Namespaces', 'namespace', node ) }}
+{{ display( 'Friends', 'friend', node ) }}
 {{ display( 'Classes', 'class', node ) }}
 {{ display( 'Types', 'typedef', node ) }}
+{{ display( 'Constructors', 'constructor', node ) }}
+{{ display( 'Destructor', 'destructor', node ) }}
+{{ display( 'Methods', 'method', node ) }}
+{{ display( 'Field', 'field', node ) }}
 {{ display( 'Functions', 'function', node ) }}
 {{ display( 'Variables', 'variable', node ) }}
 {{ display( 'Unknowns', 'unknown', node ) }}
@@ -33,9 +40,14 @@
 
 {% macro standard_listing( node, title ) %}
 <div class="col-10 align-self-stretch px-3">
-<h1>{{title}}</h1>
+{%- if node.kind == 'global' %}
+  <h1>{{title}}</h1>
+{%- else %}
+  <h1>{{title}} {{node.name}}</h1>
+{%- endif %}
 {{ node.html }}
 {{ template_listing( node, brief_entries ) }}
+<div class="my-5"></div>
 </div>
 {% endmacro %}
 

@@ -21,6 +21,18 @@ class Cleanup:
             ], extension_configs = configs )
 
     def __call__( self, node ):
+        if 'declarations' in node:
+            for n in node['declarations']:
+                self( n )
+        if 'members' in node:
+            for n in node['members']:
+                self( n )
+        if 'group' in node:
+            for n in node['group']:
+                self( n )
+        if 'friend' in node:
+            self( node['friend'] )
+
         lines = []
         if 'comments' in node:
             for c in node['comments']:
@@ -31,25 +43,15 @@ class Cleanup:
                 else:
                     assert False, 'unknown comment: ' + c
 
-        lines = self.normalize_spaces( lines )
-        lines = self.simple_headers( lines )
-        lines = self.simple_definition( lines )
+            lines = self.normalize_spaces( lines )
+            lines = self.simple_headers( lines )
+            lines = self.simple_definition( lines )
 
         display = getattr( self, 'display_' + node['kind'], self.display_default )
         lines = display( node ) + lines
 
         node['markdown'] = lines
         node['html'] = self.md.convert( '\n'.join( lines ) ).splitlines()
-
-        if 'declarations' in node:
-            for n in node['declarations']:
-                self( n )
-        if 'members' in node:
-            for n in node['members']:
-                self( n )
-        if 'group' in node:
-            for n in node['group']:
-                self( n )
 
     def count_leading_spaces( self, line ):
         return len( line ) - len( line.lstrip( ' ' ) )
@@ -164,6 +166,8 @@ class Cleanup:
         new_lines.append( r'```' )
         return new_lines
 
+    def display_friend( self, friend ):
+        return friend['friend']['html']
 
     def display_field( self, method ):
         kind = method['kind'].title()
@@ -219,6 +223,16 @@ class Cleanup:
                     new_lines.append( t['type'].rjust( tmpwidth, ' ' ) + ' ' + t['name'] )
                 new_lines.append( f'>' )
         new_lines.append( f'class {name};' )
+        new_lines.append( r'```' )
+        return new_lines
+
+    def display_type( self, typ ):
+        kind = typ['kind'].title()
+        name = typ['name']
+        result = typ['type']
+        new_lines = []
+        new_lines.append( r'``` {.cpp .linenums=1}' )
+        new_lines.append( f'{result};' )
         new_lines.append( r'```' )
         return new_lines
 
