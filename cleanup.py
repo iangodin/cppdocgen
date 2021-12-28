@@ -2,6 +2,7 @@
 import re
 import markdown
 import html
+from functools import reduce
 from pprint import pprint 
 
 # Pygments highlight classes
@@ -37,6 +38,7 @@ class Cleanup:
         if 'members' in node:
             for n in node['members']:
                 self( n )
+            node['members'] = self.merge_overloads( node['members'] )
         if 'group' in node:
             for n in node['group']:
                 self( n )
@@ -46,7 +48,9 @@ class Cleanup:
         lines = []
         if 'comments' in node:
             for c in node['comments']:
-                if c.startswith( '///<' ):
+                if c == len(c) * '/':
+                    lines = ''
+                elif c.startswith( '///<' ):
                     lines.append( c[4:] )
                 elif c.startswith( '///' ):
                     lines.append( c[3:] )
@@ -113,6 +117,27 @@ class Cleanup:
                 new_lines.append( line )
         return new_lines
 
+    def merge_overloads( self, members ):
+        def merge( member1, member2 ):
+            result = member1.copy()
+            if 'arguments' in result:
+                del result['arguments'] 
+            if 'result' in result:
+                del result['result'] 
+            if 'type' in result:
+                del result['type'] 
+            result['description'] += member2['description']
+            result['markdown'] += member2['markdown']
+            result['html'] += member2['html']
+            return result
+
+        new_members = []
+        names = set( [ m['name'] for m in members ] )
+        for name in names:
+            ms = filter( lambda m: m['name'] == name, members )
+            new_members.append( reduce( merge, ms ) )
+        return new_members
+
     def display_default( self, node ):
         return []
 
@@ -136,20 +161,20 @@ class Cleanup:
         return result 
 
     def html_func( self, name ):
-        result = f'<span {hl_f}>{name}</span> '
+        result = f'<span {hl_f}>{name}</span>'
         return result 
 
     def html_var( self, name ):
-        result =  f'<span {hl_v}>{name}</span> '
+        result =  f'<span {hl_v}>{name}</span>'
         return result 
 
     def html_symbol( self, sym ):
         sym = html.escape( sym )
-        result =  f'<span {hl_v}>{sym}</span> '
+        result =  f'<span {hl_v}>{sym}</span>'
         return result 
 
     def html_class( self, name ):
-        result =  f'<span {hl_k}>class</span> <span {hl_t}>{name}</span> '
+        result =  f'<span {hl_k}>class</span> <span {hl_t}>{name}</span>'
         return result 
 
     def html_arg( self, arg, argwidth = 0 ):
@@ -187,7 +212,7 @@ class Cleanup:
         new_lines = []
         new_lines.append( r'<div class="highlight"><pre>' )
         if len( args ) == 0 :
-            new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span> <span>void</span> <span {hl_s}>);</span>' )
+            new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
         else:
             new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span>' )
             argwidth = 4 + max( [ len( a['type'] ) for a in args] )
@@ -222,7 +247,7 @@ class Cleanup:
         name = self.html_func( fn['name'] )
         args = fn['arguments']
         if len( args ) == 0 :
-            new_lines.append( f'{result}{name}<span {hl_s}>(</span> <span>void</span> <span {hl_s}>);</span>' )
+            new_lines.append( f'{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
         else:
             new_lines.append( f'{result}{name}<span {hl_s}>(</span>' )
             argwidth = 4 + max( [ len( a['type'] ) for a in args] )
@@ -237,24 +262,28 @@ class Cleanup:
         new_lines = [ r'<div class="highlight"><pre>' ]
         new_lines += self.html_template( cls.get( 'templates', None ) )
         new_lines.append( self.html_class( cls['name'] ) + self.html_symbol( ';' ) )
+
         new_lines.append( r'</pre></code></div>' )
         new_lines[2] = '<code>' + new_lines[2]
         return new_lines
 
     def display_type( self, typ ):
-        name = typ['name']
-        result = typ['type']
-        new_lines = []
-        new_lines.append( r'``` {.cpp}' )
+        new_lines = [ r'<div class="highlight"><pre>' ]
+
+        result = self.html_type( typ['type'] )
         new_lines.append( f'{result};' )
-        new_lines.append( r'```' )
+
+        new_lines.append( r'</pre></code></div>' )
+        new_lines[2] = '<code>' + new_lines[2]
         return new_lines
 
     def display_typedef( self, typedef ):
-        name = typedef['name']
-        result = typedef['type']
-        new_lines = []
-        new_lines.append( '``` {.cpp}' )
-        new_lines.append( f'using {name} = {result};' )
-        new_lines.append( r'```' )
+        new_lines = [ r'<div class="highlight"><pre>' ]
+
+        name = self.html_var( typedef['name'] )
+        result = self.html_type( typedef['type'] )
+        new_lines.append( f'<span {hl_k}>using</span> {name} = {result};' )
+
+        new_lines.append( r'</pre></code></div>' )
+        new_lines[2] = '<code>' + new_lines[2]
         return new_lines

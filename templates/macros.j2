@@ -1,43 +1,45 @@
 
-{% macro brief_entries( title, kind, node ) %}
+{%- macro brief_entries( title, kind, node ) %}
 {%- set entries = list( node.children | filter_kind( kind ) ) %}
 {%- if entries %}
-<h2>{{title}}</h2>
+<h2 class="badge rounded-pill bg-dark text-white w-100">{{title}}</h2>
 {%- for n in entries %}
 <h3>{{n.name}}</h3>
+<hr class="border-dark opacity-100 my-1">
 <div class="mx-3">
 {{ n.html }}
 </div>
 {%- endfor %}
 {%- endif %}
-{% endmacro %}
+{%- endmacro %}
 
-{% macro brief_groups( node ) %}
+{%- macro brief_groups( node ) %}
 {%- set entries = list( node.children | filter_kind( 'group' ) ) %}
 {%- for group in entries %}
-<h2>{{group.name}}</h2>
+<h2 class="badge rounded-pill bg-dark text-white">{{group.name}}</h2>
 {%- for n in group.children %}
 <h3>{{n.name}}</h3>
+<hr class="border-dark opacity-100 my-1">
 <div class="mx-3">
 {{ n.html }}
 </div>
 {%- endfor %}
 {%- endfor %}
-{% endmacro %}
+{%- endmacro %}
 
-{% macro toc_entries( title, kind, node ) %}
+{%- macro toc_entries( title, kind, node ) %}
 {%- set entries = list( node.children | filter_kind( kind ) ) %}
 {%- if entries %}
-<div class="badge rounded-pill bg-light text-dark">{{title}}</div>
+<div class="badge rounded-pill bg-light text-black my-1">{{title}}</div>
 {%- for n in node.children | filter_kind( kind ) %}
-    <a class="nav-link" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
+    <a class="btn-link text-white my-1" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
         {{n.name}}
     </a>
 {%- endfor %}
 {%- endif %}
-{% endmacro %}
+{%- endmacro %}
 
-{% macro toc_groups( node ) %}
+{%- macro toc_groups( node ) %}
 {%- set entries = list( node.children | filter_kind( 'group' ) ) %}
 {%- for group in entries %}
 <div class="badge rounded-pill bg-light text-dark">{{group.name}}</div>
@@ -47,9 +49,9 @@
     </a>
 {%- endfor %}
 {%- endfor %}
-{% endmacro %}
+{%- endmacro %}
 
-{% macro template_listing( node, display ) %}
+{%- macro template_listing( node, display ) %}
 {{ display( 'Namespaces', 'namespace', node ) }}
 {{ display( 'Friends', 'friend', node ) }}
 {{ display( 'Classes', 'class', node ) }}
@@ -57,37 +59,38 @@
 {{ display( 'Constructors', 'constructor', node ) }}
 {{ display( 'Destructor', 'destructor', node ) }}
 {{ display( 'Methods', 'method', node ) }}
-{{ display( 'Field', 'field', node ) }}
+{{ display( 'Fields', 'field', node ) }}
 {{ display( 'Functions', 'function', node ) }}
 {{ display( 'Variables', 'variable', node ) }}
 {{ display( 'Unknowns', 'unknown', node ) }}
-{% endmacro %}
+{%- endmacro %}
 
-{% macro standard_listing( node, title ) %}
-<div class="col-10 align-self-stretch px-3">
+{%- macro toc_listing( node, title ) %}
+<div class="d-flex flex-column col-2 h-100 px-2 bg-dark scrollbar-hidden">
 {%- if node.kind == 'global' %}
-  <h1>{{title}}</h1>
+  <div class="text-white text-center">{{title}}</div>
 {%- else %}
-  <h1>{{title}} {{node.name}}</h1>
+  <div class="text-white text-center"><b>{{title}} {{node.name}}</b></div>
 {%- endif %}
+{{ toc_groups( node ) }}
+{{ template_listing( node, toc_entries ) }}
+<div class="flex-fill h-100"></div>
+<div class="my-5"></div>
+</div>
+{%- endmacro %}
+
+{%- macro standard_listing( node, title ) %}
+<div class="col-10 h-100 px-3 scrollbar-hidden">
+{%- if node.kind == 'global' %}
+  <h1 class="text-center">{{title}}</h1>
+{%- else %}
+  <h1 class="text-center">{{title}} {{node.name}}</h1>
+{%- endif %}
+<hr class="border-dark opacity-100"><hr class="border-dark opacity-100">
 {{ node.html }}
 {{ brief_groups( node ) }}
 {{ template_listing( node, brief_entries ) }}
 <div class="my-5"></div>
 </div>
-{% endmacro %}
-
-{% macro toc_listing( node, title ) %}
-<div class="col-2 align-self-stretch">
-<nav class="nav flex-column p-2">
-{%- if node.kind == 'global' %}
-  <div class="title">{{title}}</div>
-{%- else %}
-  <div><b>{{title}} {{node.name}}</b></div>
-{%- endif %}
-{{ toc_groups( node ) }}
-{{ template_listing( node, toc_entries ) }}
-</nav>
-</div>
-{% endmacro %}
+{%- endmacro %}
 

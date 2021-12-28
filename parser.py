@@ -61,8 +61,6 @@ class Parser:
         result = []
         if node.raw_comment != None:
             result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
-        if node.spelling == 'toUpper':
-            pprint( result )
         return result
 
     def end_group( parser ):
@@ -288,7 +286,7 @@ class Parser:
             'kind': 'template',
             'name': node.spelling,
             'comments': [],
-            'type': next( node.get_tokens() ).spelling,
+            'type': ' '.join( [t.spelling for t in node.get_tokens() if t.spelling != node.spelling] )
         }
         return result
 

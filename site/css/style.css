@@ -1,15 +1,35 @@
 
-.toppage {
-  height: 100vh;
+html {
+  height: 100%;
+  width: 100%;
 }
 
-h1 {
-  border-width: thin 0;
+body {
+  padding-top: 40px;
+  height: 100%;
+  width: 100%;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+  overflow: scroll;
+  height: 100%;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+h2 {
+  margin-top: 1em;
+  border-width: 0 0 thin 0;
   border-style: solid;
   border-color: black;
 }
 
-h2 {
+h2.badge {
+  font-size: 1.25rem;
   margin-top: 1em;
   border-width: 0 0 thin 0;
   border-style: solid;
@@ -20,6 +40,10 @@ h3 {
   margin-top: 0.75em;
 }
 
+.scroll-y {
+    overflow: scroll;
+}
+
 .section4 {
   padding: 0 24px;
 }
@@ -28,9 +52,8 @@ h3 {
   margin: 0 -24px;
 }
 
+/*
 nav.nav {
-  color: white;
-  background-color: #111;
   height: 100%;
 }
 
@@ -63,6 +86,7 @@ nav.nav .badge {
 .nav-link:hover {
   color: white;
 }
+*/
 
 dl {
   display: flex;
@@ -80,6 +104,10 @@ dt::after {
 
 dd {
   padding: 0 2em;
+}
+
+.highlight {
+    margin: 0.5em 0;
 }
 
 .admonition {

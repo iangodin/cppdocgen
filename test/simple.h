@@ -6,5 +6,7 @@ public:
 
     ~Simple( void );
 
-    int function( double x );
+    int method( double x );
+
+    int field;
 };
