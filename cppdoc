@@ -36,11 +36,9 @@ def main():
     if not tu:
         parser.error( "unable to load input" )
 
-    for inc in tu.get_includes():
-        pprint( inc.include )
-
     if len( tu.diagnostics ) > 0:
         pprint( [get_diag_info(d) for d in  tu.diagnostics] )
+
     parser = Parser( Path( opts.dir ).resolve() )
     cppinfo = parser( tu.cursor )
     cleanup = Cleanup()

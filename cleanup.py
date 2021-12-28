@@ -12,6 +12,7 @@ class Cleanup:
         }
         self.md = markdown.Markdown( extensions = [
                 'def_list',
+                'admonition',
                 'markdown_blockdiag',
                 'pymdownx.details',
                 'pymdownx.arithmatex',
@@ -50,7 +51,6 @@ class Cleanup:
                     lines = lines + c[3:-2].splitlines()
                 else:
                     assert False, 'unknown comment: ' + c
-
             lines = self.normalize_spaces( lines )
             lines = self.simple_headers( lines )
             lines = self.simple_definition( lines )
@@ -71,7 +71,7 @@ class Cleanup:
             line = lines[i]
             line.replace( '\t', '    ' )
             lines[i] = line
-            if not line.isspace():
+            if not ( line.isspace() or len( line ) == 0 ):
                 min_spaces = min( min_spaces, self.count_leading_spaces( line ) )
 
         for i in range( len( lines ) ):
@@ -123,7 +123,7 @@ class Cleanup:
         kind = method['kind'].title()
         name = method['name']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         args = method['arguments']
         if len( args ) == 0 :
             new_lines.append( f'{name} ();' )
@@ -141,7 +141,7 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         new_lines.append( f'{name} ();' )
         new_lines.append( r'```' )
         return new_lines
@@ -151,7 +151,7 @@ class Cleanup:
         name = method['name']
         result = method['result']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         args = method['arguments']
         if len( args ) == 0 :
             new_lines.append( f'{result} {name} ();' )
@@ -169,7 +169,7 @@ class Cleanup:
         name = method['name']
         result = method['type']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         new_lines.append( f'{result} {name};' )
         new_lines.append( r'```' )
         return new_lines
@@ -182,7 +182,7 @@ class Cleanup:
         name = method['name']
         result = method['type']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         new_lines.append( f'{result} {name};' )
         new_lines.append( r'```' )
         return new_lines
@@ -193,7 +193,7 @@ class Cleanup:
         tmps = fn['templates'] if 'templates' in fn else None
         result = fn['result']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         if tmps != None:
             if len( tmps ) == 0:
                 new_lines.append( f'template <>' )
@@ -220,7 +220,7 @@ class Cleanup:
         name = fn['name']
         tmps = fn['templates'] if 'templates' in fn else None
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         if tmps != None:
             if len( tmps ) == 0:
                 new_lines.append( f'template <>' )
@@ -239,7 +239,7 @@ class Cleanup:
         name = typ['name']
         result = typ['type']
         new_lines = []
-        new_lines.append( r'``` {.cpp .linenums=1}' )
+        new_lines.append( r'``` {.cpp}' )
         new_lines.append( f'{result};' )
         new_lines.append( r'```' )
         return new_lines
@@ -249,7 +249,7 @@ class Cleanup:
         name = typedef['name']
         result = typedef['type']
         new_lines = []
-        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( '``` {.cpp}' )
         new_lines.append( f'using {name} = {result};' )
         new_lines.append( r'```' )
         return new_lines

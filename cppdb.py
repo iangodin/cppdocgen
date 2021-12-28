@@ -19,8 +19,6 @@ class CPPDatabase:
         name = node['name']
         prehtml = self.cursor.execute( f'SELECT html FROM nodes WHERE parent_id={parent_id} AND name="{name}" AND kind="{kind}"' ).fetchone()
         html = '\n'.join( node['html'] ) if 'html' in node else [ '<p>Documentatin Missing</p>' ]
-        if prehtml != None and len( prehtml[0] ) > len( html ):
-            html = prehtml[0]
         idsel = f'SELECT id FROM nodes WHERE parent_id={parent_id} AND name="{name}" AND kind="{kind}"'
         self.cursor.execute( f'INSERT OR REPLACE INTO nodes ( id, parent_id, kind, name, html ) VALUES ( ({idsel}), ?, ?, ?, ? );', ( parent_id, kind, name, html ) )
         newid = self.cursor.lastrowid

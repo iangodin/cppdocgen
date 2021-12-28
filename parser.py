@@ -39,22 +39,17 @@ class Parser:
             method = Parser.unknown
         n = method( parser, node )
         if n != None and n['kind'] != 'group' and parser.group != None:
-            print( 'ADDING TO GROUP: ' + parser.group['name'] + ' ' + str( n['name'] ) )
             g = parser.group['group']
             g.append( n )
             if len( g ) == 1:
                 n = parser.group
             else:
                 n = None
-        else:
-            if n != None:
-                print( 'NOT ADDING TO GROUP ' + str( n['name'] ) )
         return n
 
     def begin_group( parser, comments ):
         name = comments[0].lstrip( '/' );
         name = name.strip();
-        print( 'STARTING GROUP ' + name )
         parser.group = {
             'kind': 'group',
             'name': name,
@@ -69,9 +64,7 @@ class Parser:
         return result
 
     def end_group( parser ):
-        if parser.group != None:
-            print( 'ENDING GROUP ' + parser.group['name'] )
-            parser.group = None
+        parser.group = None
 
     def unknown( parser, node ):
         if node.kind.name not in parser.warned:
@@ -194,7 +187,6 @@ class Parser:
         return None
 
     def CXX_METHOD( parser, node ):
-        print( "METHOD! " + str( parser.group ) )
         if node.lexical_parent.kind.name != 'CLASS_DECL':
             return None
         comments = parser.gather_comments( node )
@@ -210,11 +202,9 @@ class Parser:
             'arguments': [parser( a ) for a in node.get_arguments()],
         }
         parser.group = prev_group
-        print( "  AFTER " + str( parser.group ) )
         return result
 
     def CONSTRUCTOR( parser, node ):
-        pprint( dir( node ) )
         result = parser.CXX_METHOD( node )
         if result:
             result['kind'] = 'constructor'
