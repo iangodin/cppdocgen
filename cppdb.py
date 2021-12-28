@@ -16,7 +16,10 @@ class CPPDatabase:
 
     def write( self, node, parent_id = 0 ):
         if node.get( 'access', 'public' ) == 'private':
-            return
+            if len( node['html'] ) == 0:
+                print( "Skipping " + node['name'] )
+                return
+            print( "Not skipping " + node['name'] )
 
         kind = node['kind']
         name = node['name']
