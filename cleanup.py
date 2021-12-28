@@ -194,7 +194,7 @@ class Cleanup:
                     ttype = self.html_type( t['type'], tmpwidth )
                     tname = self.html_var( t['name'] )
                     result.append( f'{ttype} {tname},' )
-                result[-1].rstrip( ',' )
+                result[-1] = result[-1].rstrip( ',' )
                 result.append( f'<span {hl_s}>&gt;</span>' )
         return result
 
