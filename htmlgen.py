@@ -15,6 +15,7 @@ class HTMLGenerator:
             loader = FileSystemLoader( "templates" )
         )
         self.env.filters['filter_kind'] = filter_kind
+        self.env.globals['list'] = list
 
     def generate( self ):
         node = { 'id': 0, 'name': 'global', 'kind': 'global', 'html': '' }

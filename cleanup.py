@@ -154,8 +154,28 @@ class Cleanup:
         new_lines.append( r'```' )
         return new_lines
 
+    def display_variable( self, method ):
+        kind = method['kind'].title()
+        name = method['name']
+        result = method['type']
+        new_lines = []
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( f'{result} {name};' )
+        new_lines.append( r'```' )
+        return new_lines
+
+
+    def display_field( self, method ):
+        kind = method['kind'].title()
+        name = method['name']
+        result = method['type']
+        new_lines = []
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        new_lines.append( f'{result} {name};' )
+        new_lines.append( r'```' )
+        return new_lines
+
     def display_function( self, fn ):
-        pprint( fn )
         kind = fn['kind'].title()
         name = fn['name']
         tmps = fn['templates'] if 'templates' in fn else None
@@ -170,7 +190,7 @@ class Cleanup:
                 new_lines.append( f'template < ' )
                 for t in tmps:
                     new_lines.append( t['type'].rjust( tmpwidth, ' ' ) + ' ' + t['name'] )
-                new_lines.append( f'  >' )
+                new_lines.append( f'>' )
         args = fn['arguments']
         if len( args ) == 0 :
             new_lines.append( f'{result} {name} ();' )
@@ -180,6 +200,25 @@ class Cleanup:
             for arg in args:
                 new_lines.append( arg['type'].rjust( argwidth, ' ' ) + ' ' + arg['name'] )
             new_lines.append( ');' )
+        new_lines.append( r'```' )
+        return new_lines
+
+    def display_class( self, fn ):
+        kind = fn['kind'].title()
+        name = fn['name']
+        tmps = fn['templates'] if 'templates' in fn else None
+        new_lines = []
+        new_lines.append( '``` {.cpp .linenums=1}' )
+        if tmps != None:
+            if len( tmps ) == 0:
+                new_lines.append( f'template <>' )
+            else:
+                tmpwidth = 4 + max( [len(t['type']) for t in tmps] )
+                new_lines.append( f'template < ' )
+                for t in tmps:
+                    new_lines.append( t['type'].rjust( tmpwidth, ' ' ) + ' ' + t['name'] )
+                new_lines.append( f'>' )
+        new_lines.append( f'class {name};' )
         new_lines.append( r'```' )
         return new_lines
 

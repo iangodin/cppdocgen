@@ -1,16 +1,14 @@
-{% include 'prologue.html' %}
+{%- import 'macros.j2' as cpp with context %}
+{%- include 'prologue.html' %}
 
-{% include 'breadcrumb.html' %}
+{%- include 'breadcrumb.html' %}
 
 <div class="d-flex flex-row flex-grow-1">
 
-{% include 'toc.html' %}
+{{ cpp.toc_listing( node, 'Function' ) }}
 
-<div class="col-9 align-self-stretch px-3">
-<h1>Function {{ node.name }}</h1>
-{{ node.html }}
-</div>
+{{ cpp.standard_listing( node ) }}
 
 </div>
 
-{% include 'epilogue.html' %}
+{%- include 'epilogue.html' %}

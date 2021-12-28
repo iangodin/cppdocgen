@@ -1,17 +1,54 @@
 
-{% macro listing( title, kind, node ) %}
+{% macro brief_entries( title, kind, node ) %}
+{%- set entries = list( node.children | filter_kind( kind ) ) %}
+{%- if entries %}
 <h2>{{title}}</h2>
-{%- for n in node.children | filter_kind( kind ) %}
+{%- for n in entries %}
 <h3>{{n.name}}</h3>
 {{ n.html }}
 {%- endfor %}
+{%- endif %}
 {% endmacro %}
 
-{% macro standard_listing( node ) %}
-{{ listing( 'Namespaces', 'namespace', node ) }}
-{{ listing( 'Classes', 'class', node ) }}
-{{ listing( 'Types', 'typedef', node ) }}
-{{ listing( 'Functions', 'function', node ) }}
-{{ listing( 'Variables', 'variable', node ) }}
-{{ listing( 'Unknowns', 'unknown', node ) }}
+{% macro toc_entries( title, kind, node ) %}
+{%- set entries = list( node.children | filter_kind( kind ) ) %}
+{%- if entries %}
+<div class="badge rounded-pill bg-light text-dark">{{title}}</div>
+{%- for n in node.children | filter_kind( kind ) %}
+    <a class="nav-link" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
+        {{n.name}}
+    </a>
+{%- endfor %}
+{%- endif %}
 {% endmacro %}
+
+{% macro template_listing( node, display ) %}
+{{ display( 'Namespaces', 'namespace', node ) }}
+{{ display( 'Classes', 'class', node ) }}
+{{ display( 'Types', 'typedef', node ) }}
+{{ display( 'Functions', 'function', node ) }}
+{{ display( 'Variables', 'variable', node ) }}
+{{ display( 'Unknowns', 'unknown', node ) }}
+{% endmacro %}
+
+{% macro standard_listing( node, title ) %}
+<div class="col-10 align-self-stretch px-3">
+<h1>{{title}}</h1>
+{{ node.html }}
+{{ template_listing( node, brief_entries ) }}
+</div>
+{% endmacro %}
+
+{% macro toc_listing( node, title ) %}
+<div class="col-2 align-self-stretch">
+<nav class="nav flex-column p-2">
+{%- if node.kind == 'global' %}
+  <div class="title">{{title}}</div>
+{%- else %}
+  <div><b>{{title}} {{node.name}}</b></div>
+{%- endif %}
+{{ template_listing( node, toc_entries ) }}
+</nav>
+</div>
+{% endmacro %}
+

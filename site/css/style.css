@@ -25,6 +25,11 @@ nav.nav a {
     color: white;
 }
 
+nav.nav .title {
+    font-weight: bold;
+    text-align: center;
+}
+
 nav hr {
     color: white;
     margin: 0.5rem 0;
@@ -33,6 +38,13 @@ nav hr {
 .nav-link {
     padding-right: 0;
     padding-left: 0;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+}
+
+nav.nav .badge {
+    margin-top: 1.5em;
+    margin-bottom: 0.25em;
 }
 
 .nav-link:hover {

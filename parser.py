@@ -102,18 +102,22 @@ class Parser:
             return node.kind == CursorKind.TEMPLATE_TYPE_PARAMETER or node.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER
         return list( filter( None, map( parser, filter( is_template, node.get_children() ) ) ) )
 
-    def compound( parser, node ):
+    def compound( parser, node, is_template ):
         parents = []
         members = []
+        templates = []
         for child in node.get_children():
             c = parser( child )
             if c == None:
                 continue
             if c['kind'] == 'parent':
                 parents.append( c )
+            elif c['kind'] == 'template':
+                templates.append( c )
             else:
                 members.append( c )
-        return { 'parents': parents, 'members': members }
+        tmps = { 'templates': templates } if is_template else {}
+        return { 'parents': parents, 'members': members } | tmps
 
     def access( parser, node ):
         a = node.access_specifier
@@ -163,9 +167,9 @@ class Parser:
         return result
 
     def CLASS_TEMPLATE( parser, node ):
-        return parser.CLASS_DECL( node )
+        return parser.CLASS_DECL( node, True )
 
-    def CLASS_DECL( parser, node ):
+    def CLASS_DECL( parser, node, is_template = False ):
         comments = parser.gather_comments( node.extent.start )
         prev_group = parser.group
         parser.group = None
@@ -173,7 +177,7 @@ class Parser:
             'kind': 'class',
             'name': node.spelling,
             'comments': comments
-        } | parser.compound( node )
+        } | parser.compound( node, is_template )
         parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
