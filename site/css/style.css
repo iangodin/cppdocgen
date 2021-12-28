@@ -20,6 +20,14 @@ h3 {
   margin-top: 0.75em;
 }
 
+.section4 {
+  padding: 0 24px;
+}
+
+.section4 h4 {
+  margin: 0 -24px;
+}
+
 nav.nav {
   color: white;
   background-color: #111;
@@ -54,6 +62,24 @@ nav.nav .badge {
 
 .nav-link:hover {
   color: white;
+}
+
+dl {
+  display: flex;
+  flex-flow: column wrap;
+}
+
+dt {
+  font-weight: bold;
+  padding: 0 0.5em;
+}
+
+dt::after {
+    content: " :";
+}
+
+dd {
+  padding: 0 2em;
 }
 
 .admonition {

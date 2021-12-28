@@ -61,6 +61,8 @@ class Parser:
         result = []
         if node.raw_comment != None:
             result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
+        if node.spelling == 'toUpper':
+            pprint( result )
         return result
 
     def end_group( parser ):
@@ -207,7 +209,15 @@ class Parser:
     def CONSTRUCTOR( parser, node ):
         result = parser.CXX_METHOD( node )
         if result:
+            result['result'] = ''
             result['kind'] = 'constructor'
+        return result
+
+    def DESTRUCTOR( parser, node ):
+        result = parser.CXX_METHOD( node )
+        if result:
+            result['result'] = ''
+            result['kind'] = 'destructor'
         return result
 
     def FIELD_DECL( parser, node ):
