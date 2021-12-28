@@ -38,18 +38,23 @@ class Parser:
         if method == None:
             method = Parser.unknown
         n = method( parser, node )
-        if n != None and parser.group != None:
+        if n != None and n['kind'] != 'group' and parser.group != None:
+            print( 'ADDING TO GROUP: ' + parser.group['name'] + ' ' + str( n['name'] ) )
             g = parser.group['group']
             g.append( n )
             if len( g ) == 1:
                 n = parser.group
             else:
                 n = None
+        else:
+            if n != None:
+                print( 'NOT ADDING TO GROUP ' + str( n['name'] ) )
         return n
 
     def begin_group( parser, comments ):
         name = comments[0].lstrip( '/' );
         name = name.strip();
+        print( 'STARTING GROUP ' + name )
         parser.group = {
             'kind': 'group',
             'name': name,
@@ -63,8 +68,10 @@ class Parser:
             result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
         return result
 
-    def skip_comments( parser, loc ):
-        parser.group = None
+    def end_group( parser ):
+        if parser.group != None:
+            print( 'ENDING GROUP ' + parser.group['name'] )
+            parser.group = None
 
     def unknown( parser, node ):
         if node.kind.name not in parser.warned:
@@ -121,7 +128,7 @@ class Parser:
             'name': node.spelling,
             'declarations': parser.decls( node )
         }
-        parser.group = None
+        parser.end_group()
         return result
 
     def NAMESPACE( parser, node ):
@@ -147,7 +154,6 @@ class Parser:
             'type': node.type.spelling,
             'comments': comments
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
@@ -163,7 +169,6 @@ class Parser:
             'name': node.spelling,
             'comments': comments
         } | parser.compound( node, is_template )
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
@@ -178,7 +183,6 @@ class Parser:
             'name': node.spelling,
             'access': parser.access( node )
         }
-        parser.skip_comments( node.extent.end )
         return result
 
     def CXX_ACCESS_SPEC_DECL( parser, node ):
@@ -190,6 +194,7 @@ class Parser:
         return None
 
     def CXX_METHOD( parser, node ):
+        print( "METHOD! " + str( parser.group ) )
         if node.lexical_parent.kind.name != 'CLASS_DECL':
             return None
         comments = parser.gather_comments( node )
@@ -204,8 +209,8 @@ class Parser:
             'result': node.result_type.spelling,
             'arguments': [parser( a ) for a in node.get_arguments()],
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
+        print( "  AFTER " + str( parser.group ) )
         return result
 
     def CONSTRUCTOR( parser, node ):
@@ -226,7 +231,6 @@ class Parser:
             'type': node.type.spelling,
             'access': parser.access( node ),
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
@@ -242,7 +246,6 @@ class Parser:
             'friend': friend,
             'access': parser.access( node ),
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
@@ -277,7 +280,6 @@ class Parser:
             'result': node.result_type.spelling,
             'arguments': parser.arguments( node ),
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
@@ -309,6 +311,5 @@ class Parser:
             'comments': comments,
             'type': node.underlying_typedef_type.spelling,
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result

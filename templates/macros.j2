@@ -12,6 +12,19 @@
 {%- endif %}
 {% endmacro %}
 
+{% macro brief_groups( node ) %}
+{%- set entries = list( node.children | filter_kind( 'group' ) ) %}
+{%- for group in entries %}
+<h2>{{group.name}}</h2>
+{%- for n in group.children %}
+<h3>{{n.name}}</h3>
+<div class="mx-3">
+{{ n.html }}
+</div>
+{%- endfor %}
+{%- endfor %}
+{% endmacro %}
+
 {% macro toc_entries( title, kind, node ) %}
 {%- set entries = list( node.children | filter_kind( kind ) ) %}
 {%- if entries %}
@@ -24,8 +37,19 @@
 {%- endif %}
 {% endmacro %}
 
+{% macro toc_groups( node ) %}
+{%- set entries = list( node.children | filter_kind( 'group' ) ) %}
+{%- for group in entries %}
+<div class="badge rounded-pill bg-light text-dark">{{group.name}}</div>
+{%- for n in group.children %}
+    <a class="nav-link" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
+        {{n.name}}
+    </a>
+{%- endfor %}
+{%- endfor %}
+{% endmacro %}
+
 {% macro template_listing( node, display ) %}
-{{ display( 'Groups', 'group', node ) }}
 {{ display( 'Namespaces', 'namespace', node ) }}
 {{ display( 'Friends', 'friend', node ) }}
 {{ display( 'Classes', 'class', node ) }}
@@ -47,6 +71,7 @@
   <h1>{{title}} {{node.name}}</h1>
 {%- endif %}
 {{ node.html }}
+{{ brief_groups( node ) }}
 {{ template_listing( node, brief_entries ) }}
 <div class="my-5"></div>
 </div>
@@ -60,6 +85,7 @@
 {%- else %}
   <div><b>{{title}} {{node.name}}</b></div>
 {%- endif %}
+{{ toc_groups( node ) }}
 {{ template_listing( node, toc_entries ) }}
 </nav>
 </div>

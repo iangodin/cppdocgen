@@ -4,7 +4,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 def filter_kind( nodes, kind ):
-    return filter( lambda n: n['kind'] == kind, nodes )
+    return filter( lambda n: kind == '' or n['kind'] == kind, nodes )
 
 class HTMLGenerator:
     def __init__( self, dbfile, topdir ):
