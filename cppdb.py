@@ -15,6 +15,9 @@ class CPPDatabase:
         self.cursor.execute( 'CREATE TABLE IF NOT EXISTS nodes ( id INTEGER PRIMARY KEY, parent_id INTEGER, kind VARCHAR(64), name VARCHAR(64), html TEXT, UNIQUE( parent_id, name, kind ) );' )
 
     def write( self, node, parent_id = 0 ):
+        if node.get( 'access', 'public' ) == 'private':
+            return
+
         kind = node['kind']
         name = node['name']
         prehtml = self.cursor.execute( f'SELECT html FROM nodes WHERE parent_id={parent_id} AND name="{name}" AND kind="{kind}"' ).fetchone()

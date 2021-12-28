@@ -7,7 +7,9 @@ from pprint import pprint
 
 # Pygments highlight classes
 hl_t = 'class="kt"' # Type
+hl_n = 'class="nt"' # Tag
 hl_f = 'class="nf"' # Function
+hl_c = 'class="nc"' # Class
 hl_v = 'class="nv"' # Variable
 hl_s = 'class="o"' # Symbol
 hl_k = 'class="k"' # Keyword
@@ -153,11 +155,23 @@ class Cleanup:
         new_lines.append( f'It\'s a kind of {info}.' )
         return new_lines
 
-    def html_type( self, tname, width = 0 ):
+    def html_type_space( self, tname, width = 0 ):
         result = ''
         if len( tname ) != 0:
             tname = html.escape( tname.rjust( width ) )
             result = f'<span {hl_t}>{tname}</span> '
+        return result 
+
+    def html_type( self, tname, width = 0 ):
+        result = ''
+        if len( tname ) != 0:
+            tname = html.escape( tname.rjust( width ) )
+            result = f'<span {hl_t}>{tname}</span>'
+        return result 
+
+    def html_tag( self, tname ):
+        tname = html.escape( tname )
+        result = f'<span {hl_n}>{tname}</span>'
         return result 
 
     def html_func( self, name ):
@@ -174,13 +188,13 @@ class Cleanup:
         return result 
 
     def html_class( self, name ):
-        result =  f'<span {hl_k}>class</span> <span {hl_t}>{name}</span>'
+        result =  f'<span {hl_k}>class</span> <span {hl_c}>{name}</span>'
         return result 
 
     def html_arg( self, arg, argwidth = 0 ):
-        atype = self.html_type( arg['type'], argwidth )
+        atype = self.html_type_space( arg['type'], argwidth )
         aname = self.html_var( arg['name'] )
-        return f'{atype}{aname}'
+        return f'{atype}{aname},'
 
     def html_template( self, tmps ):
         result = []
@@ -191,9 +205,9 @@ class Cleanup:
                 tmpwidth = 4 + max( [len(t['type']) for t in tmps] )
                 result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;</span>' )
                 for t in tmps:
-                    ttype = self.html_type( t['type'], tmpwidth )
+                    ttype = self.html_type_space( t['type'], tmpwidth )
                     tname = self.html_var( t['name'] )
-                    result.append( f'{ttype} {tname},' )
+                    result.append( f'{ttype}{tname},' )
                 result[-1] = result[-1].rstrip( ',' )
                 result.append( f'<span {hl_s}>&gt;</span>' )
         return result
@@ -207,7 +221,7 @@ class Cleanup:
     def display_method( self, method ):
         name = self.html_func( method['name'] )
         args = method['arguments']
-        result = self.html_type( method['result'] )
+        result = self.html_type_space( method['result'] )
 
         new_lines = []
         new_lines.append( r'<div class="highlight"><pre>' )
@@ -218,16 +232,17 @@ class Cleanup:
             argwidth = 4 + max( [ len( a['type'] ) for a in args] )
             for arg in args:
                 new_lines.append( self.html_arg( arg, argwidth ) )
+            new_lines[-1] = new_lines[-1].rstrip( ',' )
             new_lines.append( f'<span {hl_s}>);</span>' )
         new_lines.append( r'</pre></code></div>' )
         return new_lines
 
     def display_variable( self, var ):
         name = self.html_var( var['name'] )
-        result = self.html_type( var['type'] )
+        result = self.html_type_space( var['type'] )
         new_lines = []
         new_lines.append( r'<div class="highlight"><pre>' )
-        new_lines.append( f'<code>{result} {name}<span {hl_s}>;</span>' )
+        new_lines.append( f'<code>{result}{name}<span {hl_s}>;</span>' )
         new_lines.append( r'</pre></code></div>' )
         return new_lines
 
@@ -240,7 +255,7 @@ class Cleanup:
     def display_function( self, fn ):
         new_lines = [ r'<div class="highlight"><pre>' ]
 
-        result = self.html_type( fn['result'] )
+        result = self.html_type_space( fn['result'] )
 
         new_lines += self.html_template( fn.get( 'templates', None ) )
 
@@ -253,6 +268,7 @@ class Cleanup:
             argwidth = 4 + max( [ len( a['type'] ) for a in args] )
             for arg in args:
                 new_lines.append( self.html_arg( arg, argwidth ) )
+            new_lines[-1] = new_lines[-1].rstrip( ',' )
             new_lines.append( f'<span {hl_s}>);</span>' )
         new_lines.append( r'</pre></code></div>' )
         new_lines[2] = '<code>' + new_lines[2]
@@ -280,7 +296,7 @@ class Cleanup:
     def display_typedef( self, typedef ):
         new_lines = [ r'<div class="highlight"><pre>' ]
 
-        name = self.html_var( typedef['name'] )
+        name = self.html_tag( typedef['name'] )
         result = self.html_type( typedef['type'] )
         new_lines.append( f'<span {hl_k}>using</span> {name} = {result};' )
 
