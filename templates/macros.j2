@@ -25,6 +25,7 @@
 {% endmacro %}
 
 {% macro template_listing( node, display ) %}
+{{ display( 'Groups', 'group', node ) }}
 {{ display( 'Namespaces', 'namespace', node ) }}
 {{ display( 'Friends', 'friend', node ) }}
 {{ display( 'Classes', 'class', node ) }}

@@ -36,10 +36,18 @@ class Cleanup:
         lines = []
         if 'comments' in node:
             for c in node['comments']:
-                if c.startswith( '//' ):
-                    lines.append( c[2:] )
-                elif c.startswith( '/*' ):
-                    lines = lines + c[2:-2].splitlines()
+                if c.startswith( '///<' ):
+                    lines.append( c[4:] )
+                elif c.startswith( '///' ):
+                    lines.append( c[3:] )
+                elif c.startswith( '/**<' ):
+                    lines = lines + c[4:-2].splitlines()
+                elif c.startswith( '/**' ):
+                    lines = lines + c[3:-2].splitlines()
+                elif c.startswith( '/*!<' ):
+                    lines = lines + c[3:-2].splitlines()
+                elif c.startswith( '/*!' ):
+                    lines = lines + c[3:-2].splitlines()
                 else:
                     assert False, 'unknown comment: ' + c
 

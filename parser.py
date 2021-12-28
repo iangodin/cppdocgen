@@ -25,9 +25,7 @@ def compare_location( loc1, loc2 ):
     return False
 
 class Parser:
-    def __init__( parser, comments, topdir ):
-        pprint( comments )
-        parser.comments = comments
+    def __init__( parser, topdir ):
         parser.group = None
         parser.warned = set()
         parser.topdir = topdir
@@ -40,7 +38,7 @@ class Parser:
         if method == None:
             method = Parser.unknown
         n = method( parser, node )
-        if parser.group != None:
+        if n != None and parser.group != None:
             g = parser.group['group']
             g.append( n )
             if len( g ) == 1:
@@ -49,38 +47,23 @@ class Parser:
                 n = None
         return n
 
-    def begin_group( parser, name, comments ):
+    def begin_group( parser, comments ):
+        name = comments[0].lstrip( '/' );
+        name = name.strip();
         parser.group = {
             'kind': 'group',
-            'name': name[4:].strip(),
-            'comments': comments,
+            'name': name,
+            'comments': comments[1:],
             'group': [],
         }
 
-    def gather_comments( parser, loc ):
+    def gather_comments( parser, node ):
         result = []
-        count = 0
-        for c in parser.comments:
-            if compare_location( c.location, loc ):
-                count = count + 1
-                if c.spelling.startswith( '////' ):
-                    parser.begin_group( c.spelling, result.copy() )
-                    result = []
-                else:
-                    result.append( c.spelling )
-            else:
-                break
-        parser.comments = parser.comments[count:]
+        if node.raw_comment != None:
+            result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
         return result
 
     def skip_comments( parser, loc ):
-        count = 0
-        for c in parser.comments:
-            if compare_location( c.location, loc ):
-                count = count + 1
-            else:
-                break
-        parser.comments = parser.comments[count:]
         parser.group = None
 
     def unknown( parser, node ):
@@ -142,7 +125,7 @@ class Parser:
         return result
 
     def NAMESPACE( parser, node ):
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -151,12 +134,11 @@ class Parser:
             'comments': comments,
             'declarations': parser.decls( node )
         }
-        parser.skip_comments( node.extent.end )
         parser.group = prev_group
         return result
 
     def VAR_DECL( parser, node ):
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -173,9 +155,7 @@ class Parser:
         return parser.CLASS_DECL( node, True )
 
     def CLASS_DECL( parser, node, is_template = False ):
-        comments = parser.gather_comments( node.extent.start )
-        if node.spelling == 'mal_keyword':
-            pprint( comments )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -204,13 +184,15 @@ class Parser:
     def CXX_ACCESS_SPEC_DECL( parser, node ):
         # Ignore public:/protected:/private: access.
         # Each member is tagged with access already.
-        comments = parser.gather_comments( node.extent.start )
+        if node.raw_comment != None:
+            comments = parser.gather_comments( node )
+            parser.begin_group( comments )
         return None
 
     def CXX_METHOD( parser, node ):
         if node.lexical_parent.kind.name != 'CLASS_DECL':
             return None
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -227,13 +209,14 @@ class Parser:
         return result
 
     def CONSTRUCTOR( parser, node ):
+        pprint( dir( node ) )
         result = parser.CXX_METHOD( node )
         if result:
             result['kind'] = 'constructor'
         return result
 
     def FIELD_DECL( parser, node ):
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -249,7 +232,7 @@ class Parser:
 
     def FRIEND_DECL( parser, node ):
         friend = parser( next( node.get_children() ) )
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -283,7 +266,7 @@ class Parser:
         return result
 
     def FUNCTION_DECL( parser, node ):
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
@@ -317,7 +300,7 @@ class Parser:
         return result
 
     def TYPE_ALIAS_DECL( parser, node ):
-        comments = parser.gather_comments( node.extent.start )
+        comments = parser.gather_comments( node )
         prev_group = parser.group
         parser.group = None
         result = {
