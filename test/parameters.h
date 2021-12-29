@@ -1,14 +1,16 @@
 
 class Parameters
 {
+public:
     /// Parameters:
-    ///  x - X parameters
-    ///  y - X parameters
+    ///  x => X parameters
+    ///  y => X parameters
     void test( int x, double y );
 
     /// Parameters:
-    ///  n - Number
+    ///  n => Number
     /// Returns:
     ///   The square of the number
     int square( int n );
 };
+

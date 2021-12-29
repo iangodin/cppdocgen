@@ -34,7 +34,10 @@ class HTMLGenerator:
 
     def generate_node( self, node, parent ):
         if node['kind'] in [ 'class', 'namespace', 'global' ]:
-            filename = self.topdir / parent / ( node['name'] + '.html' )
+            if node['kind'] == 'global':
+                filename = self.topdir / 'index.html'
+            else:
+                filename = self.topdir / parent / ( node['name'] + '.html' )
             filename.parent.mkdir( parents = True, exist_ok = True )
             template = self.env.get_template( node['kind'] + ".html" )
             htmlData = template.render( node=node, parents=parent.parts );

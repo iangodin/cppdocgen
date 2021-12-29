@@ -17,7 +17,7 @@ hl_k = 'class="k"' # Keyword
 class Cleanup:
     def __init__( self ):
         self.header = re.compile( r'[\s]*([^:]*)[:][\s]*' )
-        self.definition = re.compile( r'[\s]*([^-]*)[-](.*)' )
+        self.definition = re.compile( r'[\s]*((?!=>).+)=>(.*)' )
         configs = {
             'markdown_blockdiag': { 'format': 'svg' }
         }
@@ -51,7 +51,7 @@ class Cleanup:
         if 'comments' in node:
             for c in node['comments']:
                 if c == len(c) * '/':
-                    lines = ''
+                    pass
                 elif c.startswith( '///<' ):
                     lines.append( c[4:] )
                 elif c.startswith( '///' ):
