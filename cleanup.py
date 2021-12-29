@@ -191,6 +191,10 @@ class Cleanup:
         result =  f'<span {hl_k}>class</span> <span {hl_c}>{name}</span>'
         return result 
 
+    def html_struct( self, name ):
+        result =  f'<span {hl_k}>struct</span> <span {hl_c}>{name}</span>'
+        return result 
+
     def html_arg( self, arg, argwidth = 0 ):
         atype = self.html_type_space( arg['type'], argwidth )
         aname = self.html_var( arg['name'] )
@@ -278,6 +282,15 @@ class Cleanup:
         new_lines = [ r'<div class="highlight"><pre>' ]
         new_lines += self.html_template( cls.get( 'templates', None ) )
         new_lines.append( self.html_class( cls['name'] ) + self.html_symbol( ';' ) )
+
+        new_lines.append( r'</pre></code></div>' )
+        new_lines[2] = '<code>' + new_lines[2]
+        return new_lines
+
+    def display_struct( self, cls ):
+        new_lines = [ r'<div class="highlight"><pre>' ]
+        new_lines += self.html_template( cls.get( 'templates', None ) )
+        new_lines.append( self.html_struct( cls['name'] ) + self.html_symbol( ';' ) )
 
         new_lines.append( r'</pre></code></div>' )
         new_lines[2] = '<code>' + new_lines[2]

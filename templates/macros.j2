@@ -4,6 +4,10 @@
 {%- if entries %}
 <h2 class="badge rounded-pill bg-dark text-white w-100">{{title}}</h2>
 {%- for n in entries %}
+{%- set aid = anchor( n ) %}
+{%- if aid %}
+<a id="{{aid}}"></a>
+{%- endif %}
 <h3>{{n.name}}</h3>
 <hr class="border-dark opacity-100 my-1">
 <div class="mx-3">
@@ -32,9 +36,7 @@
 {%- if entries %}
 <div class="badge rounded-pill bg-light text-black my-1">{{title}}</div>
 {%- for n in node.children | filter_kind( kind ) %}
-    <a class="btn-link text-white my-1" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
-        {{n.name}}
-    </a>
+    <a class="btn-link text-white my-1" href="/{{n.link}}">{{n.name}}</a>
 {%- endfor %}
 {%- endif %}
 {%- endmacro %}
@@ -44,9 +46,7 @@
 {%- for group in entries %}
 <div class="badge rounded-pill bg-light text-dark">{{group.name}}</div>
 {%- for n in group.children %}
-    <a class="nav-link" href="/{{'/'.join(parents + (node.name,) )}}/{{n.name}}.html">
-        {{n.name}}
-    </a>
+  <a class="nav-link" href="/{{n.link}}>{{n.name}}</a>
 {%- endfor %}
 {%- endfor %}
 {%- endmacro %}
@@ -54,7 +54,7 @@
 {%- macro template_listing( node, display ) %}
 {{ display( 'Namespaces', 'namespace', node ) }}
 {{ display( 'Friends', 'friend', node ) }}
-{{ display( 'Classes', 'class', node ) }}
+{{ display( 'Classes', [ 'class', 'struct' ], node ) }}
 {{ display( 'Types', 'typedef', node ) }}
 {{ display( 'Constructors', 'constructor', node ) }}
 {{ display( 'Destructor', 'destructor', node ) }}
@@ -68,9 +68,9 @@
 {%- macro toc_listing( node, title ) %}
 <div class="d-flex flex-column col-2 h-100 px-2 bg-dark scrollbar-hidden">
 {%- if node.kind == 'global' %}
-  <div class="text-white text-center">{{title}}</div>
+  <div class="text-white text-center font-weight-bold">{{title}}</div>
 {%- else %}
-  <div class="text-white text-center"><b>{{title}} {{node.name}}</b></div>
+  <div class="text-white text-center font-weight-bold">{{title}} {{node.name}}</div>
 {%- endif %}
 {{ toc_groups( node ) }}
 {{ template_listing( node, toc_entries ) }}
@@ -81,10 +81,11 @@
 
 {%- macro standard_listing( node, title ) %}
 <div class="col-10 h-100 px-3 scrollbar-hidden">
+<div class="my-3"></div>
 {%- if node.kind == 'global' %}
-  <h1 class="text-center">{{title}}</h1>
+<h1 class="text-center">{{title}}</h1>
 {%- else %}
-  <h1 class="text-center">{{title}} {{node.name}}</h1>
+<h1 class="text-center">{{title}} {{node.name}}</h1>
 {%- endif %}
 <hr class="border-dark opacity-100"><hr class="border-dark opacity-100">
 {{ node.html }}

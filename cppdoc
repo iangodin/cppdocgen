@@ -6,6 +6,7 @@ from parser import Parser
 from cppdb import CPPDatabase
 from cleanup import Cleanup
 from htmlgen import HTMLGenerator
+from linkup import LinkUp
 from pathlib import Path
 import yaml
 
@@ -41,6 +42,10 @@ def main():
 
     parser = Parser( Path( opts.dir ).resolve() )
     cppinfo = parser( tu.cursor )
+
+    links = LinkUp()
+    links( cppinfo )
+
     cleanup = Cleanup()
     cleanup( cppinfo )
 

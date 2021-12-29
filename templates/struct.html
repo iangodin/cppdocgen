@@ -1,0 +1,12 @@
+{%- import 'macros.j2' as cpp with context %}
+{%- include 'prologue.html' %}
+
+<div class="d-flex flex-row align-content-stretch h-100">
+
+{{ cpp.toc_listing( node, 'Struct' ) }}
+
+{{ cpp.standard_listing( node, 'Struct' ) }}
+
+</div>
+
+{%- include 'epilogue.html' %}
