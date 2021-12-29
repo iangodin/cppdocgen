@@ -12,7 +12,7 @@ class CPPDatabase:
         self.connection.close()
 
     def create_table( self ):
-        self.cursor.execute( 'CREATE TABLE IF NOT EXISTS nodes ( id INTEGER PRIMARY KEY, parent_id INTEGER, kind VARCHAR(64), name VARCHAR(64), link VARCHAR(64), html TEXT, UNIQUE( parent_id, name, kind ) );' )
+        self.cursor.execute( 'CREATE TABLE IF NOT EXISTS nodes ( id INTEGER PRIMARY KEY, parent_id INTEGER, kind VARCHAR(64), name VARCHAR(64), link VARCHAR(64), html TEXT, short TEXT );' )
 
     def write( self, node, parent_id = 0 ):
         if node.get( 'access', 'public' ) == 'private':
@@ -22,10 +22,9 @@ class CPPDatabase:
         kind = node['kind']
         name = node['name']
         link = str( node['link'] )
-        html = '\n'.join( node['html'] ) if 'html' in node else [ '<p>Documentatin Missing</p>' ]
-        html = '\n'.join( node['description'] ) + html
-        idsel = f'SELECT id FROM nodes WHERE parent_id={parent_id} AND name="{name}" AND kind="{kind}"'
-        self.cursor.execute( f'INSERT OR REPLACE INTO nodes ( id, parent_id, kind, name, link, html ) VALUES ( ({idsel}), ?, ?, ?, ?, ? );', ( parent_id, kind, name, link, html ) )
+        html = '\n'.join( node['html'] ) if 'html' in node else '<p>Documentation Missing</p>'
+        short = '\n'.join( node['short'] ) if 'short' in node else ''
+        self.cursor.execute( f'INSERT OR FAIL INTO nodes ( parent_id, kind, name, link, html, short ) VALUES ( ?, ?, ?, ?, ?, ? );', ( parent_id, kind, name, link, html, short ) )
         newid = self.cursor.lastrowid
         if 'children' in node:
             for n in node['children']:

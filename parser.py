@@ -55,16 +55,20 @@ class Parser:
             if node['kind'] == 'file':
                 lookup[node['name']] = top
             else:
-                key = '/'.join( node['parent'] )
-                if key in lookup:
-                    node['parent'][0] = 'global'
-                    if node['kind'] in htmlTypes:
-                        node['link'] = str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
+                pkey = '/'.join( node['parent'] )
+                if pkey in lookup:
+                    key = pkey + '/' + node['name']
+                    if key in lookup:
+                        parser.merge_overload( lookup[key], node )
                     else:
-                        node['link'] = str( PosixPath( *node['parent'] ).with_suffix( '.html' ) ) + '#' + node['name']
-                    parent = lookup[key]
-                    parent['children'].append( node )
-                    lookup[key + '/' + node['name']] = node
+                        node['parent'][0] = 'global'
+                        if node['kind'] in htmlTypes:
+                            node['link'] = str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
+                        else:
+                            node['link'] = str( PosixPath( *node['parent'] ).with_suffix( '.html' ) ) + '#' + node['name']
+                        parent = lookup[pkey]
+                        parent['children'].append( node )
+                        lookup[key] = node
                 else:
                     print( "??????????????" )
                     pprint( node, sort_dicts=False )
@@ -151,6 +155,16 @@ class Parser:
         if a == AccessSpecifier.PRIVATE:
             return 'private'
         return 'unknown'
+
+    def merge_overload( self, node, overload ):
+        if 'params' in node:
+            del node['params'] 
+        if 'result' in node:
+            del node['result'] 
+        if 'type' in node:
+            del node['type'] 
+        node['html'] = node['html'] + [ '<hr class="overload">' ] + overload['html']
+        node['short'] = node['short'] + [ '<hr class="overload">' ] + overload['short']
 
     def TRANSLATION_UNIT( parser, cursor ):
         result = {

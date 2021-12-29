@@ -5,6 +5,8 @@ import html
 from functools import reduce
 from pprint import pprint 
 
+htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
+
 # Pygments highlight classes
 hl_t = 'class="kt"' # Type
 hl_n = 'class="nt"' # Tag
@@ -34,10 +36,27 @@ class Cleanup:
             ], extension_configs = configs )
 
     def __call__( cleaner, node ):
-        if 'children' in node:
-            for n in node['children']:
-                cleaner( n )
+        mdown = cleaner.generate_markdown( node )
+        #node['markdown'] = mdown
 
+        docs = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
+
+        display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
+        desc = display( node )
+        #node['description'] = desc
+        node['html'] = desc + docs
+        if node['kind'] not in htmlTypes:
+            node['short'] = node['html']
+        else:
+            node['short'] = desc
+
+        # Keep the children at the end of the node dictionary
+        if 'children' in node:
+            c = node['children']
+            del node['children']
+            node['children'] = c
+
+    def generate_markdown( cleaner, node ):
         lines = []
         if 'comments' in node:
             for c in node['comments']:
@@ -60,16 +79,8 @@ class Cleanup:
             lines = cleaner.normalize_spaces( lines )
             lines = cleaner.simple_headers( lines )
             lines = cleaner.simple_definition( lines )
+        return lines
 
-        node['markdown'] = lines
-        node['html'] = cleaner.md.convert( '\n'.join( lines ) ).splitlines()
-
-        display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
-        node['description'] = display( node )
-        if 'children' in node:
-            c = node['children']
-            del node['children']
-            node['children'] = c
 
     def count_leading_spaces( self, line ):
         return len( line ) - len( line.lstrip( ' ' ) )
@@ -113,27 +124,6 @@ class Cleanup:
             else:
                 new_lines.append( line )
         return new_lines
-
-    def merge_overloads( self, members ):
-        def merge( member1, member2 ):
-            result = member1.copy()
-            if 'params' in result:
-                del result['params'] 
-            if 'result' in result:
-                del result['result'] 
-            if 'type' in result:
-                del result['type'] 
-            result['description'] += member2['description']
-            result['markdown'] += member2['markdown']
-            result['html'] += member2['html']
-            return result
-
-        new_members = []
-        names = set( [ m['name'] for m in members ] )
-        for name in names:
-            ms = filter( lambda m: m['name'] == name, members )
-            new_members.append( reduce( merge, ms ) )
-        return new_members
 
     def display_default( self, node ):
         return []

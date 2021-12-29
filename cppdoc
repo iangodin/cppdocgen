@@ -41,12 +41,15 @@ def main():
 
     parser = Parser( Path( opts.dir ).resolve() )
     parser.parse( tu.cursor )
-    cppinfo = parser.create_tree()
+    #pprint( parser.nodes, sort_dicts=False )
 
     cleanup = Cleanup()
-    cleanup( cppinfo )
+    for n in parser.nodes:
+        cleanup( n )
 
-    #pprint( cppinfo, sort_dicts=False )
+    cppinfo = parser.create_tree()
+
+    pprint( cppinfo, sort_dicts=False )
 
     cppdb = CPPDatabase( 'cppinfo.db' )
     cppdb.write( cppinfo )

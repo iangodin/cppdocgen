@@ -34,10 +34,10 @@ class HTMLGenerator:
         self.generate_node( tops[0], [] )
 
     def load_nodes( self, parent_id = 0 ):
-        rows = self.cursor.execute( f'SELECT id, name, kind, link, html FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
+        rows = self.cursor.execute( f'SELECT id, name, kind, link, html, short FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
         nodes = []
         for row in rows:
-            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'html': row[4] }
+            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'html': row[4], 'short': row[5] }
             child['children'] = self.load_nodes( child['id'] )
             nodes.append( child )
         return nodes

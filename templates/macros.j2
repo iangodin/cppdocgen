@@ -1,34 +1,41 @@
 
 {%- macro brief_entries( title, kind, node ) %}
-{%- set entries = list( node.children | filter_kind( kind ) ) %}
-{%- if entries %}
-<h2 class="badge rounded-pill bg-dark text-white w-100">{{title}}</h2>
-{%- for n in entries %}
-{%- set aid = anchor( n ) %}
-{%- if aid %}
-<a id="{{aid}}"></a>
-{%- endif %}
-<h3>{{n.name}}</h3>
-<hr class="border-dark opacity-100 my-1">
-<div class="mx-3">
-{{ n.html }}
-</div>
-{%- endfor %}
-{%- endif %}
+  {%- set entries = list( node.children | filter_kind( kind ) ) %}
+  {%- if entries %}
+    <section class="group">
+    <h2 class="badge rounded-pill bg-dark text-white w-100 px-1">{{title}}</h2>
+    
+    {%- for n in entries %}
+      <section class="member px-2">
+        {%- set aid = anchor( n ) %}
+        {% if aid %}<a id="{{aid}}"></a>{% endif %}
+        <h3 class="my-2">{{n.name}}</h3>
+        <hr class="border-dark opacity-100">
+        <div class="mx-3">
+        {{ n.short }}
+        </div>
+      </section>
+    {%- endfor %}
+    </section>
+  {%- endif %}
 {%- endmacro %}
 
 {%- macro brief_groups( node ) %}
-{%- set entries = list( node.children | filter_kind( 'group' ) ) %}
-{%- for group in entries %}
-<h2 class="badge rounded-pill bg-dark text-white">{{group.name}}</h2>
-{%- for n in group.children %}
-<h3>{{n.name}}</h3>
-<hr class="border-dark opacity-100 my-1">
-<div class="mx-3">
-{{ n.html }}
-</div>
-{%- endfor %}
-{%- endfor %}
+  {%- set entries = list( node.children | filter_kind( 'group' ) ) %}
+  {%- for group in entries %}
+    <section class="group">
+    <h2 class="badge rounded-pill bg-dark text-white w-100">{{group.name}}</h2>
+    {%- for n in group.children %}
+      <section class="member px-2">
+      <h3 class="my-2">{{n.name}}</h3>
+      <hr class="border-dark opacity-100">
+      <div class="mx-3">
+      {{ n.short }}
+      </div>
+      </section>
+    {%- endfor %}
+    </section>
+  {%- endfor %}
 {%- endmacro %}
 
 {%- macro toc_entries( title, kind, node ) %}
@@ -80,18 +87,22 @@
 {%- endmacro %}
 
 {%- macro standard_listing( node, title ) %}
-<div class="col-10 h-100 px-3 scrollbar-hidden">
-<div class="my-3"></div>
-{%- if node.kind == 'global' %}
-<h1 class="text-center">{{title}}</h1>
-{%- else %}
-<h1 class="text-center">{{title}} {{node.name}}</h1>
-{%- endif %}
-<hr class="border-dark opacity-100"><hr class="border-dark opacity-100">
-{{ node.html }}
-{{ brief_groups( node ) }}
-{{ template_listing( node, brief_entries ) }}
-<div class="my-5"></div>
+<div class="d-flex flex-column col-10 h-100">
+  {%- if node.kind == 'global' %}
+  <h1 class="text-center">{{title}}</h1>
+  {%- else %}
+  <h1 class="text-center">{{title}} {{node.name}}</h1>
+  {%- endif %}
+  <hr class="border-dark opacity-100">
+
+  <div class="wh-100 px-3 scrollbar-hidden">
+
+  {{ node.html }}
+  {{ brief_groups( node ) }}
+  {{ template_listing( node, brief_entries ) }}
+
+  <div class="my-5"></div>
+  </div>
 </div>
 {%- endmacro %}
 
