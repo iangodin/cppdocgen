@@ -58,3 +58,8 @@ class HTMLGenerator:
         for n in node['children']:
             self.generate_node( n, pathname )
 
+    def gen_class( self, node, parent ):
+        pathname = parent / node['name']
+        for n in filter( lambda n : n['kind'] == 'class', node['children'] ):
+            self.generate_node( n, pathname )
+
