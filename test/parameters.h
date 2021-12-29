@@ -3,8 +3,8 @@ class Parameters
 {
 public:
     /// Parameters:
-    ///  x => X parameters
-    ///  y => X parameters
+    ///  x => X parameter
+    ///  y => Y parameter
     void test( int x, double y );
 
     /// Parameters:

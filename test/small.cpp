@@ -1,22 +1,6 @@
 
-namespace NameSpace
+struct Foo
 {
-    struct Class
-    {
-        int VarX;
-        struct NestedClass
-        {
-            int VarY;
-        };
-    };
+    void doit( double x );
+};
 
-    int VarZ;
-
-    namespace NestedSpace
-    {
-        struct ClassInSpace
-        {
-        };
-        int VarA;
-    }
-}

@@ -6,7 +6,6 @@ from parser import Parser
 from cppdb import CPPDatabase
 from cleanup import Cleanup
 from htmlgen import HTMLGenerator
-from linkup import LinkUp
 from pathlib import Path
 import yaml
 
@@ -41,13 +40,13 @@ def main():
         pprint( [get_diag_info(d) for d in  tu.diagnostics] )
 
     parser = Parser( Path( opts.dir ).resolve() )
-    cppinfo = parser( tu.cursor )
-
-    links = LinkUp()
-    links( cppinfo )
+    parser.parse( tu.cursor )
+    cppinfo = parser.create_tree()
 
     cleanup = Cleanup()
     cleanup( cppinfo )
+
+    #pprint( cppinfo, sort_dicts=False )
 
     cppdb = CPPDatabase( 'cppinfo.db' )
     cppdb.write( cppinfo )

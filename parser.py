@@ -1,8 +1,10 @@
 
-from clang.cindex import AccessSpecifier, CursorKind
-from pathlib import Path
+from clang.cindex import AccessSpecifier, CursorKind, Cursor
+from pathlib import Path, PosixPath
 from pprint import pprint
 import yaml
+
+htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
 
 def get_info(node, depth=0):
     if depth < 3:
@@ -29,33 +31,89 @@ class Parser:
         parser.group = None
         parser.warned = set()
         parser.topdir = topdir
+        parser.nodes = []
+        parser.cursors = set()
+        parser.params = None
+        parser.templates = None
+        parser.type = None
 
-    def __call__( parser, node ):
-        if node.location.file != None and parser.topdir not in Path( str( node.location.file ) ).resolve().parents:
-            return None
-        k = node.kind.name
-        method = getattr( Parser, k, None )
-        if method == None:
-            method = Parser.unknown
-        n = method( parser, node )
-        if n != None and n['kind'] != 'group' and parser.group != None:
-            g = parser.group['group']
-            g.append( n )
-            if len( g ) == 1:
-                n = parser.group
-            else:
-                n = None
-        return n
+    def __call__( parser, cursor ):
+        assert False, 'not here'
 
-    def begin_group( parser, comments ):
-        name = comments[0].lstrip( '/' );
-        name = name.strip();
-        parser.group = {
-            'kind': 'group',
-            'name': name,
-            'comments': comments[1:],
-            'group': [],
+    def create_tree( parser ):
+        top = {
+            'kind': 'global',
+            'name': 'global',
+            'parent': [],
+            'link': 'index.html',
+            'children': [],
         }
+
+        lookup = {}
+
+        for node in parser.nodes:
+            if node['kind'] == 'file':
+                lookup[node['name']] = top
+            else:
+                key = '/'.join( node['parent'] )
+                if key in lookup:
+                    node['parent'][0] = 'global'
+                    if node['kind'] in htmlTypes:
+                        node['link'] = str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
+                    else:
+                        node['link'] = str( PosixPath( *node['parent'] ).with_suffix( '.html' ) ) + '#' + node['name']
+                    parent = lookup[key]
+                    parent['children'].append( node )
+                    lookup[key + '/' + node['name']] = node
+                else:
+                    print( "??????????????" )
+                    pprint( node, sort_dicts=False )
+                    print( "??????????????" )
+        return top
+
+
+    def parse( parser, cursor ):
+        if cursor.location.file != None and parser.topdir not in Path( str( cursor.location.file ) ).resolve().parents:
+            return None
+        k = cursor.kind.name
+        method = getattr( Parser, k, Parser.UNKNOWN )
+        if cursor.hash not in parser.cursors:
+            saved_group = parser.group
+            node = method( parser, cursor )
+            parser.cursors.add( cursor.hash )
+            if node != None:
+                parser.nodes.append( node );
+                for c in cursor.get_children():
+                    parser.parse( c )
+                if parser.params != None:
+                    if 'params' in node:
+                        node['params'] = parser.params
+                        parser.params = None
+                if parser.templates != None:
+                    if 'templates' in node:
+                        node['templates'] = parser.templates
+                        parser.templates = None
+                if node['kind'] != 'group':
+                    parser.group = saved_group
+
+    def add_param( parser, param ):
+        if parser.params == None:
+            parser.params = []
+        parser.params.append( param )
+
+    def add_template( parser, tmp ):
+        if parser.templates == None:
+            parser.templates = []
+        parser.templates.append( tmp )
+
+    def get_parent( parser, cursor ):
+        chain = []
+        p = cursor.semantic_parent
+        while isinstance( p, Cursor ):
+            chain.append( p.spelling )
+            p = p.semantic_parent
+        chain.reverse()
+        return chain
 
     def gather_comments( parser, node ):
         result = []
@@ -63,50 +121,29 @@ class Parser:
             result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
         return result
 
-    def end_group( parser ):
-        parser.group = None
-
-    def unknown( parser, node ):
-        if node.kind.name not in parser.warned:
-            print( "unknown node type " + node.kind.name )
-        parser.warned.add( node.kind.name )
-        return {
+    def UNKNOWN( parser, cursor ):
+        if cursor.kind.name not in parser.warned:
+            print( "unknown node type " + cursor.kind.name )
+        parser.warned.add( cursor.kind.name )
+        node = {
             'kind': 'unknown',
-            'name': node.spelling,
-            'info': str( node.kind.name ),
-            'location': node.location,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'info': str( cursor.kind.name ),
+            'location': cursor.location,
+            'children': [],
         }
+        # TODO should we process children of unknown??
+        return node
 
-    def decls( parser, node ):
-        return list( filter( None, map( parser, node.get_children() ) ) )
+    def convert_decl( parser, cursor, node ):
+        if not cursor.is_definition():
+            node['decl_kind'] = node['kind']
+            node['kind'] = 'decl'
 
-    def arguments( parser, node ):
-        return list( filter( None, map( parser, filter( lambda n: n.kind == CursorKind.PARM_DECL, node.get_children() ) ) ) )
-
-    def templates( parser, node ):
-        def is_template( node ):
-            return node.kind == CursorKind.TEMPLATE_TYPE_PARAMETER or node.kind == CursorKind.TEMPLATE_NON_TYPE_PARAMETER
-        return list( filter( None, map( parser, filter( is_template, node.get_children() ) ) ) )
-
-    def compound( parser, node, is_template ):
-        parents = []
-        members = []
-        templates = []
-        for child in node.get_children():
-            c = parser( child )
-            if c == None:
-                continue
-            if c['kind'] == 'parent':
-                parents.append( c )
-            elif c['kind'] == 'template':
-                templates.append( c )
-            else:
-                members.append( c )
-        tmps = { 'templates': templates } if is_template else {}
-        return { 'parents': parents, 'members': members } | tmps
-
-    def access( parser, node ):
-        a = node.access_specifier
+    def access( parser, cursor ):
+        a = cursor.access_specifier
         if a == AccessSpecifier.PUBLIC:
             return 'public'
         if a == AccessSpecifier.PROTECTED:
@@ -115,199 +152,268 @@ class Parser:
             return 'private'
         return 'unknown'
 
-    def TRANSLATION_UNIT( parser, node ):
+    def TRANSLATION_UNIT( parser, cursor ):
         result = {
             'kind': 'file',
-            'name': node.spelling,
-            'declarations': parser.decls( node )
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'children': []
         }
-        parser.end_group()
         return result
 
-    def NAMESPACE( parser, node ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def NAMESPACE( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'namespace',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
             'comments': comments,
-            'declarations': parser.decls( node )
+            'children': []
         }
-        parser.group = prev_group
         return result
 
-    def VAR_DECL( parser, node ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def VAR_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'variable',
-            'name': node.spelling,
-            'type': node.type.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
+            'type': cursor.type.spelling,
             'comments': comments
         }
-        parser.group = prev_group
         return result
 
-    def CLASS_TEMPLATE( parser, node ):
-        return parser.CLASS_DECL( node, True )
-
-    def CLASS_DECL( parser, node, is_template = False ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
+    def CLASS_DECL( parser, cursor, is_template = False ):
+        comments = parser.gather_comments( cursor )
         parser.group = None
         result = {
             'kind': 'class',
-            'name': node.spelling,
-            'comments': comments
-        } | parser.compound( node, is_template )
-        parser.group = prev_group
-        return result
-
-    def STRUCT_DECL( parser, node ):
-        result = parser.CLASS_DECL( node )
-        result['kind'] = 'struct'
-        return result
-
-    def CXX_BASE_SPECIFIER( parser, node ):
-        result = {
-            'kind': 'parent',
-            'name': node.spelling,
-            'access': parser.access( node )
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'comments': comments,
+            'parents': [],
+            'children': [],
         }
+        parser.convert_decl( cursor, result )
         return result
 
-    def CXX_ACCESS_SPEC_DECL( parser, node ):
-        # Ignore public:/protected:/private: access.
-        # Each member is tagged with access already.
-        if node.raw_comment != None:
-            comments = parser.gather_comments( node )
-            parser.begin_group( comments )
-        return None
-
-    def CXX_METHOD( parser, node ):
-        if node.lexical_parent.kind.name != 'CLASS_DECL':
-            return None
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
+    def CLASS_TEMPLATE( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         parser.group = None
         result = {
-            'kind': 'method',
-            'name': node.spelling,
+            'kind': 'class',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
             'comments': comments,
-            'type': node.type.spelling,
-            'access': parser.access( node ),
-            'result': node.result_type.spelling,
-            'arguments': [parser( a ) for a in node.get_arguments()],
+            'parents': [],
+            'templates': [],
+            'children': [],
         }
-        parser.group = prev_group
+        parser.convert_decl( cursor, result )
         return result
 
-    def CONSTRUCTOR( parser, node ):
-        result = parser.CXX_METHOD( node )
+
+    def STRUCT_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
+        parser.group = None
+        result = {
+            'kind': 'struct',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'comments': comments,
+            'parents': [],
+            'children': [],
+        }
+        parser.convert_decl( cursor, result )
+        return result
+
+    def CXX_BASE_SPECIFIER( parser, cursor ):
+        result = {
+            'kind': 'parent',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'access': parser.access( cursor ),
+            'children': [],
+        }
+        return result
+
+    def CXX_ACCESS_SPEC_DECL( parser, cursor ):
+        # Each member is tagged with access already.
+        if cursor.raw_comment != None:
+            comments = parser.gather_comments( cursor )
+            name = comments[0].lstrip( '/' );
+            name = name.strip();
+            result = {
+                'kind': 'group',
+                'name': name,
+                'parent': parser.get_parent( cursor ),
+                'link': None,
+                'comments': comments[1:],
+                'children': [],
+            }
+            parser.group = name
+            return result
+        return None
+
+    def CXX_METHOD( parser, cursor ):
+        comments = parser.gather_comments( cursor )
+        result = {
+            'kind': 'method',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
+            'comments': comments,
+            'type': cursor.type.spelling,
+            'access': parser.access( cursor ),
+            'result': cursor.result_type.spelling,
+            'params': [],
+            'children': [],
+        }
+        return result
+
+    def CONSTRUCTOR( parser, cursor ):
+        result = parser.CXX_METHOD( cursor )
         if result:
             result['result'] = ''
             result['kind'] = 'constructor'
         return result
 
-    def DESTRUCTOR( parser, node ):
-        result = parser.CXX_METHOD( node )
+    def DESTRUCTOR( parser, cursor ):
+        result = parser.CXX_METHOD( cursor )
         if result:
             result['result'] = ''
             result['kind'] = 'destructor'
         return result
 
-    def FIELD_DECL( parser, node ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def FIELD_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'field',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
             'comments': comments,
-            'type': node.type.spelling,
-            'access': parser.access( node ),
+            'type': cursor.type.spelling,
+            'access': parser.access( cursor ),
+            'children': [],
         }
-        parser.group = prev_group
         return result
 
-    def FRIEND_DECL( parser, node ):
-        friend = parser( next( node.get_children() ) )
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def FRIEND_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'friend',
             'name': friend['name'],
+            'parent': parser.get_parent( cursor ),
+            'link': None,
             'comments': comments,
-            'friend': friend,
-            'access': parser.access( node ),
+            'access': parser.access( cursor ),
+            'children': [],
         }
-        parser.group = prev_group
         return result
 
-    def TYPE_REF( parser, node ):
-        return {
-            'kind': 'type',
-            'name': node.type.spelling,
-            'type': node.spelling,
-        }
+    def TYPE_REF( parser, cursor ):
+        #print( "TYPE_REF: " + cursor.spelling + ' ' + cursor.type.spelling )
+        return None
 
-    def PARM_DECL( parser, node ):
-        return {
+    def PARM_DECL( parser, cursor ):
+        result = {
             'kind': 'param',
-            'name': node.spelling,
-            'type': node.type.spelling,
+            'name': cursor.spelling,
+            'type': cursor.type.spelling,
+            'children': [],
         }
+        parser.add_param( result )
+        return None
 
-    def FUNCTION_TEMPLATE( parser, node ):
-        result = parser.FUNCTION_DECL( node )
-        result['templates'] = parser.templates( node )
-        return result
-
-    def FUNCTION_DECL( parser, node ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def FUNCTION_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'function',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
             'comments': comments,
-            'type': node.type.spelling,
-            'result': node.result_type.spelling,
-            'arguments': parser.arguments( node ),
+            'type': cursor.type.spelling,
+            'result': cursor.result_type.spelling,
+            'params': [],
+            'children': [],
         }
-        parser.group = prev_group
+        parser.convert_decl( cursor, result )
         return result
 
-    def TEMPLATE_TYPE_PARAMETER( parser, node ):
+    def FUNCTION_TEMPLATE( parser, cursor ):
+        comments = parser.gather_comments( cursor )
+        result = {
+            'kind': 'function',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
+            'comments': comments,
+            'type': cursor.type.spelling,
+            'result': cursor.result_type.spelling,
+            'templates': [],
+            'params': [],
+            'children': [],
+        }
+        parser.convert_decl( cursor, result )
+        return result
+
+
+    def TEMPLATE_TYPE_PARAMETER( parser, cursor ):
         result = {
             'kind': 'template',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
             'comments': [],
-            'type': ' '.join( [t.spelling for t in node.get_tokens() if t.spelling != node.spelling] )
+            'type': ' '.join( [t.spelling for t in cursor.get_tokens() if t.spelling != cursor.spelling] ),
+            'children': [],
         }
-        return result
+        parser.convert_decl( cursor, result )
+        parser.add_template( result )
+        return None
 
-    def TEMPLATE_NON_TYPE_PARAMETER( parser, node ):
+    def TEMPLATE_NON_TYPE_PARAMETER( parser, cursor ):
         result = {
             'kind': 'template',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
             'comments': [],
-            'type': node.type.spelling,
+            'type': cursor.type.spelling,
+            'children': [],
         }
-        return result
+        parser.convert_decl( cursor, result )
+        parser.add_template( result )
+        return None
 
-    def TYPE_ALIAS_DECL( parser, node ):
-        comments = parser.gather_comments( node )
-        prev_group = parser.group
-        parser.group = None
+    def TYPE_ALIAS_DECL( parser, cursor ):
+        comments = parser.gather_comments( cursor )
         result = {
             'kind': 'typedef',
-            'name': node.spelling,
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
             'comments': comments,
-            'type': node.underlying_typedef_type.spelling,
+            'type': cursor.underlying_typedef_type.spelling,
+            'children': [],
         }
-        parser.group = prev_group
         return result
+
+    def NAMESPACE_REF( parser, cursor ):
+        #print( "NAMESPACE_REF: " + cursor.spelling )
+        return None

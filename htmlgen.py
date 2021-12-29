@@ -15,8 +15,6 @@ def anchor( node ):
         result = node['link'].split( '#' )[-1]
     return result
 
-toplevel = 'global'
-
 class HTMLGenerator:
     def __init__( self, dbfile, topdir ):
         self.topdir = topdir
@@ -30,49 +28,30 @@ class HTMLGenerator:
         self.env.globals['anchor'] = anchor
 
     def generate( self ):
-        node = { 'id': 0, 'name': 'global', 'kind': 'global', 'link': 'index.html', 'html': '' }
-        self.gather_children( node )
-        self.generate_node( node, Path() )
+        tops = self.load_nodes()
+        assert len( tops ) == 1, 'expect only one global node'
+        print( tops[0]['link'] )
+        self.generate_node( tops[0], [] )
 
-    def gather_children( self, node ):
-        parent_id = node['id']
-        rows = self.cursor.execute( f'SELECT id, name, kind, link, html FROM nodes WHERE parent_id={parent_id} AND kind != "file" ORDER BY id;' ).fetchall();
-        children = []
+    def load_nodes( self, parent_id = 0 ):
+        rows = self.cursor.execute( f'SELECT id, name, kind, link, html FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
+        nodes = []
         for row in rows:
-            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': toplevel + '/' + row[3], 'html': row[4] }
-            self.gather_children( child )
-            children.append( child )
-        node['children'] = children
+            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'html': row[4] }
+            child['children'] = self.load_nodes( child['id'] )
+            nodes.append( child )
+        return nodes
 
-    def generate_node( self, node, parent ):
+    def generate_node( self, node, parents ):
         if node['kind'] in [ 'class', 'struct', 'namespace', 'global' ]:
             filename = self.topdir / node['link']
             assert '#' not in str( filename ), 'expected class/struct/namespace/global without fragment'
             filename.parent.mkdir( parents = True, exist_ok = True )
             template = self.env.get_template( node['kind'] + ".html" )
-            htmlData = template.render( node=node, parents=parent.parts );
+            htmlData = template.render( node=node, parents=parents );
             with filename.open( 'w' ) as f:
                 f.write( htmlData )
 
-        iterate = getattr( self, 'gen_' + node['kind'], None )
-        if iterate:
-            iterate( node, parent )
-
-    def gen_global( self, node, parent ):
         for n in node['children']:
-            self.generate_node( n, parent )
-
-    def gen_namespace( self, node, parent ):
-        pathname = parent / node['name']
-        for n in node['children']:
-            self.generate_node( n, pathname )
-
-    def gen_class( self, node, parent ):
-        pathname = parent / node['name']
-        for n in filter( lambda n : n['kind'] in ['class','struct'], node['children'] ):
-            self.generate_node( n, pathname )
-
-    def gen_struct( self, node, parent ):
-        # Identical to class
-        self.gen_class( node, parent )
+            self.generate_node( n, parents + [ node ] )
 

@@ -1,10 +1,10 @@
 <nav aria-label="navbar" class="navbar-dark bg-dark text-white w-100 fixed-top">
   <div class="container-fluid">
   <ol class="breadcrumb">
-  {%- for part in parents %}
-    <li class="breadcrumb-item"><a href="#">{{part}}</a></li>
+  {%- for parent in parents %}
+    <li class="breadcrumb-item"><a href="/{{parent.link}}">{{parent.name}}</a></li>
   {%- endfor %}
-    <li class="breadcrumb-item active">{{node.name}}</li>
+  <li class="breadcrumb-item active">{{node.name}}</li>
   </ol>
   </div>
 </nav>

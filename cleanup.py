@@ -33,19 +33,10 @@ class Cleanup:
                 'pymdownx.highlight',
             ], extension_configs = configs )
 
-    def __call__( self, node ):
-        if 'declarations' in node:
-            for n in node['declarations']:
-                self( n )
-        if 'members' in node:
-            for n in node['members']:
-                self( n )
-            node['members'] = self.merge_overloads( node['members'] )
-        if 'group' in node:
-            for n in node['group']:
-                self( n )
-        if 'friend' in node:
-            self( node['friend'] )
+    def __call__( cleaner, node ):
+        if 'children' in node:
+            for n in node['children']:
+                cleaner( n )
 
         lines = []
         if 'comments' in node:
@@ -66,15 +57,19 @@ class Cleanup:
                     lines = lines + c[3:-2].splitlines()
                 else:
                     assert False, 'unknown comment: ' + c
-            lines = self.normalize_spaces( lines )
-            lines = self.simple_headers( lines )
-            lines = self.simple_definition( lines )
+            lines = cleaner.normalize_spaces( lines )
+            lines = cleaner.simple_headers( lines )
+            lines = cleaner.simple_definition( lines )
 
         node['markdown'] = lines
-        node['html'] = self.md.convert( '\n'.join( lines ) ).splitlines()
+        node['html'] = cleaner.md.convert( '\n'.join( lines ) ).splitlines()
 
-        display = getattr( self, 'display_' + node['kind'], self.display_default )
+        display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
         node['description'] = display( node )
+        if 'children' in node:
+            c = node['children']
+            del node['children']
+            node['children'] = c
 
     def count_leading_spaces( self, line ):
         return len( line ) - len( line.lstrip( ' ' ) )
@@ -122,8 +117,8 @@ class Cleanup:
     def merge_overloads( self, members ):
         def merge( member1, member2 ):
             result = member1.copy()
-            if 'arguments' in result:
-                del result['arguments'] 
+            if 'params' in result:
+                del result['params'] 
             if 'result' in result:
                 del result['result'] 
             if 'type' in result:
@@ -224,7 +219,7 @@ class Cleanup:
 
     def display_method( self, method ):
         name = self.html_func( method['name'] )
-        args = method['arguments']
+        args = method['params']
         result = self.html_type_space( method['result'] )
 
         new_lines = []
@@ -264,7 +259,7 @@ class Cleanup:
         new_lines += self.html_template( fn.get( 'templates', None ) )
 
         name = self.html_func( fn['name'] )
-        args = fn['arguments']
+        args = fn['params']
         if len( args ) == 0 :
             new_lines.append( f'{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
         else:
