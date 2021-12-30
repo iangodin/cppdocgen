@@ -37,18 +37,11 @@ class Cleanup:
 
     def __call__( cleaner, node ):
         mdown = cleaner.generate_markdown( node )
-        #node['markdown'] = mdown
 
-        docs = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
+        node['user_doc'] = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
 
         display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
-        desc = display( node )
-        #node['description'] = desc
-        node['html'] = desc + docs
-        if node['kind'] not in htmlTypes:
-            node['short'] = node['html']
-        else:
-            node['short'] = desc
+        node['auto_doc'] = display( node )
 
         # Keep the children at the end of the node dictionary
         if 'children' in node:
@@ -80,7 +73,6 @@ class Cleanup:
             lines = cleaner.simple_headers( lines )
             lines = cleaner.simple_definition( lines )
         return lines
-
 
     def count_leading_spaces( self, line ):
         return len( line ) - len( line.lstrip( ' ' ) )
@@ -301,3 +293,4 @@ class Cleanup:
         new_lines.append( r'</pre></code></div>' )
         new_lines[2] = '<code>' + new_lines[2]
         return new_lines
+

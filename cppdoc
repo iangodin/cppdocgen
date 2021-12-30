@@ -49,7 +49,7 @@ def main():
 
     cppinfo = parser.create_tree()
 
-    pprint( cppinfo, sort_dicts=False )
+    #pprint( cppinfo, sort_dicts=False )
 
     cppdb = CPPDatabase( 'cppinfo.db' )
     cppdb.write( cppinfo )

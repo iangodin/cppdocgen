@@ -1,4 +1,5 @@
 
+/// Class with methods having parameter descriptions
 class Parameters
 {
 public:
@@ -9,6 +10,7 @@ public:
 
     /// Parameters:
     ///  n => Number
+    ///
     /// Returns:
     ///   The square of the number
     int square( int n );

@@ -2,29 +2,10 @@
 from clang.cindex import AccessSpecifier, CursorKind, Cursor
 from pathlib import Path, PosixPath
 from pprint import pprint
+from functools import reduce
 import yaml
 
 htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
-
-def get_info(node, depth=0):
-    if depth < 3:
-        children = [get_info(c, depth+1)
-                    for c in node.get_children()]
-    else:
-        children = None
-    return { 'kind' : str( node.kind ),
-             'spelling' : node.spelling,
-             'displayname' : node.displayname,
-             'type' : node.type.spelling,
-             'location' : str( node.location ),
-             'children' : children }
-
-def compare_location( loc1, loc2 ):
-    if loc1.line < loc2.line:
-        return True
-    if loc1.line == loc2.line:
-        return loc1.column < loc2.column
-    return False
 
 class Parser:
     def __init__( parser, topdir ):
@@ -44,37 +25,56 @@ class Parser:
         top = {
             'kind': 'global',
             'name': 'global',
+            'auto_doc': [ '<p>Global namespaces, functions, classes, and variables.</p>' ],
+            'user_doc': '',
             'parent': [],
             'link': 'index.html',
             'children': [],
         }
 
         lookup = {}
+        lookup['global'] = top
 
         for node in parser.nodes:
-            if node['kind'] == 'file':
-                lookup[node['name']] = top
-            else:
+            if node['kind'] != 'file':
+                node['parent'][0] = 'global'
                 pkey = '/'.join( node['parent'] )
                 if pkey in lookup:
-                    key = pkey + '/' + node['name']
-                    if key in lookup:
-                        parser.merge_overload( lookup[key], node )
+                    if node['kind'] in htmlTypes:
+                        node['link'] = '/' + str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
                     else:
-                        node['parent'][0] = 'global'
-                        if node['kind'] in htmlTypes:
-                            node['link'] = str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
-                        else:
-                            node['link'] = str( PosixPath( *node['parent'] ).with_suffix( '.html' ) ) + '#' + node['name']
-                        parent = lookup[pkey]
+                        node['link'] = '#' + node['name']
+                    parent = lookup[pkey]
+
+                    key = pkey + '/' + node['name']
+                    dupnode = lookup.get( key, None )
+                    if dupnode:
+                        newnode = parser.merge_duplicate( dupnode, node )
+                        lookup[key] = newnode
+                    else:
                         parent['children'].append( node )
                         lookup[key] = node
                 else:
-                    print( "??????????????" )
-                    pprint( node, sort_dicts=False )
-                    print( "??????????????" )
-        return top
+                    pprint( pkey + " not found" )
 
+        # Resolve duplicates
+        for node in lookup.values():
+            if node['kind'] == 'duplicate':
+                pkey = '/'.join( node['parent'] )
+                parent = lookup[pkey]
+
+                overloads = {}
+                dups = node['children']
+                for n in dups:
+                    t = n['type']
+                    if t in overloads:
+                        parser.merge_identical( overloads[t], n )
+                    else:
+                        overloads[t] = n.copy()
+                node.clear();
+                node.update( reduce( parser.merge_overload, overloads.values() ) )
+
+        return top
 
     def parse( parser, cursor ):
         if cursor.location.file != None and parser.topdir not in Path( str( cursor.location.file ) ).resolve().parents:
@@ -86,6 +86,7 @@ class Parser:
             node = method( parser, cursor )
             parser.cursors.add( cursor.hash )
             if node != None:
+                node['cursor_kind'] = str( cursor.kind )
                 parser.nodes.append( node );
                 for c in cursor.get_children():
                     parser.parse( c )
@@ -141,11 +142,6 @@ class Parser:
         # TODO should we process children of unknown??
         return node
 
-    def convert_decl( parser, cursor, node ):
-        if not cursor.is_definition():
-            node['decl_kind'] = node['kind']
-            node['kind'] = 'decl'
-
     def access( parser, cursor ):
         a = cursor.access_specifier
         if a == AccessSpecifier.PUBLIC:
@@ -156,15 +152,33 @@ class Parser:
             return 'private'
         return 'unknown'
 
-    def merge_overload( self, node, overload ):
-        if 'params' in node:
-            del node['params'] 
-        if 'result' in node:
-            del node['result'] 
-        if 'type' in node:
-            del node['type'] 
-        node['html'] = node['html'] + [ '<hr class="overload">' ] + overload['html']
-        node['short'] = node['short'] + [ '<hr class="overload">' ] + overload['short']
+    def merge_overload( self, overload, node ):
+        overload['auto_doc'] += node['auto_doc']
+        overload['user_doc'] += node['user_doc']
+        return overload
+
+    def merge_identical( self, overload, node ):
+        overload['user_doc'] += node['user_doc']
+        return overload
+
+    def merge_duplicate( self, node1, node2 ):
+        duplicate = None
+        if node1 == None:
+            node1 = node2
+        else:
+            if node1['kind'] != 'duplicate':
+                copy = node1.copy()
+                node1.clear()
+                node1.update( {
+                    'kind': 'duplicate',
+                    'name': copy['name'],
+                    'parent': copy['parent'],
+                    'link': copy['link'],
+                    'children': [ copy, node2 ]
+                } )
+            else:
+                node1['children'].append( node2 )
+        return node1
 
     def TRANSLATION_UNIT( parser, cursor ):
         result = {
@@ -213,7 +227,6 @@ class Parser:
             'parents': [],
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         return result
 
     def CLASS_TEMPLATE( parser, cursor ):
@@ -229,7 +242,6 @@ class Parser:
             'templates': [],
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         return result
 
 
@@ -245,7 +257,6 @@ class Parser:
             'parents': [],
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         return result
 
     def CXX_BASE_SPECIFIER( parser, cursor ):
@@ -364,27 +375,33 @@ class Parser:
             'params': [],
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         return result
 
     def FUNCTION_TEMPLATE( parser, cursor ):
         comments = parser.gather_comments( cursor )
+        kind = 'function'
+        parent = cursor.semantic_parent
+
+        # Is there a more reliable way to tell if a template is a constructor?
+        # But this should work well enough
+        if cursor.spelling == parent.spelling:
+            if parent.kind in [ CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL ]:
+                kind = 'constructor'
+
         result = {
-            'kind': 'function',
+            'kind': kind,
             'name': cursor.spelling,
             'parent': parser.get_parent( cursor ),
             'link': None,
             'group': parser.group,
             'comments': comments,
             'type': cursor.type.spelling,
-            'result': cursor.result_type.spelling,
+            'result': cursor.result_type.spelling if kind != 'constructor' else '',
             'templates': [],
             'params': [],
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         return result
-
 
     def TEMPLATE_TYPE_PARAMETER( parser, cursor ):
         result = {
@@ -396,7 +413,6 @@ class Parser:
             'type': ' '.join( [t.spelling for t in cursor.get_tokens() if t.spelling != cursor.spelling] ),
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         parser.add_template( result )
         return None
 
@@ -410,7 +426,6 @@ class Parser:
             'type': cursor.type.spelling,
             'children': [],
         }
-        parser.convert_decl( cursor, result )
         parser.add_template( result )
         return None
 
@@ -430,4 +445,7 @@ class Parser:
 
     def NAMESPACE_REF( parser, cursor ):
         #print( "NAMESPACE_REF: " + cursor.spelling )
+        return None
+
+    def COMPOUND_STMT( parser, cursor ):
         return None

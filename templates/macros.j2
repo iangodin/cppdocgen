@@ -4,7 +4,6 @@
   {%- if entries %}
     <section class="group">
     <h2 class="badge rounded-pill bg-dark text-white w-100 px-1">{{title}}</h2>
-    
     {%- for n in entries %}
       <section class="member px-2">
         {%- set aid = anchor( n ) %}
@@ -12,7 +11,8 @@
         <h3 class="my-2">{{n.name}}</h3>
         <hr class="border-dark opacity-100">
         <div class="mx-3">
-        {{ n.short }}
+        {{- n.auto }}
+        {%- if n.kind not in ['class','struct','namespace','global'] %}{{ n.user }}{%- endif %}
         </div>
       </section>
     {%- endfor %}
@@ -30,7 +30,7 @@
       <h3 class="my-2">{{n.name}}</h3>
       <hr class="border-dark opacity-100">
       <div class="mx-3">
-      {{ n.short }}
+      {{- n.short }}
       </div>
       </section>
     {%- endfor %}
@@ -43,7 +43,7 @@
 {%- if entries %}
 <div class="badge rounded-pill bg-light text-black my-1">{{title}}</div>
 {%- for n in node.children | filter_kind( kind ) %}
-    <a class="btn-link text-white my-1" href="/{{n.link}}">{{n.name}}</a>
+    <a class="btn-link text-white my-1" href="{{n.link}}">{{n.name}}</a>
 {%- endfor %}
 {%- endif %}
 {%- endmacro %}
@@ -53,23 +53,23 @@
 {%- for group in entries %}
 <div class="badge rounded-pill bg-light text-dark">{{group.name}}</div>
 {%- for n in group.children %}
-  <a class="nav-link" href="/{{n.link}}>{{n.name}}</a>
+  <a class="nav-link" href="{{n.link}}>{{n.name}}</a>
 {%- endfor %}
 {%- endfor %}
 {%- endmacro %}
 
 {%- macro template_listing( node, display ) %}
-{{ display( 'Namespaces', 'namespace', node ) }}
-{{ display( 'Friends', 'friend', node ) }}
-{{ display( 'Classes', [ 'class', 'struct' ], node ) }}
-{{ display( 'Types', 'typedef', node ) }}
-{{ display( 'Constructors', 'constructor', node ) }}
-{{ display( 'Destructor', 'destructor', node ) }}
-{{ display( 'Methods', 'method', node ) }}
-{{ display( 'Fields', 'field', node ) }}
-{{ display( 'Functions', 'function', node ) }}
-{{ display( 'Variables', 'variable', node ) }}
-{{ display( 'Unknowns', 'unknown', node ) }}
+{{- display( 'Namespaces', 'namespace', node ) }}
+{{- display( 'Friends', 'friend', node ) }}
+{{- display( 'Classes', [ 'class', 'struct' ], node ) }}
+{{- display( 'Types', 'typedef', node ) }}
+{{- display( 'Constructors', 'constructor', node ) }}
+{{- display( 'Destructor', 'destructor', node ) }}
+{{- display( 'Methods', 'method', node ) }}
+{{- display( 'Fields', 'field', node ) }}
+{{- display( 'Functions', 'function', node ) }}
+{{- display( 'Variables', 'variable', node ) }}
+{{- display( 'Unknowns', 'unknown', node ) }}
 {%- endmacro %}
 
 {%- macro toc_listing( node, title ) %}
@@ -79,8 +79,8 @@
 {%- else %}
   <div class="text-white text-center font-weight-bold">{{title}} {{node.name}}</div>
 {%- endif %}
-{{ toc_groups( node ) }}
-{{ template_listing( node, toc_entries ) }}
+{{- toc_groups( node ) }}
+{{- template_listing( node, toc_entries ) }}
 <div class="flex-fill h-100"></div>
 <div class="my-5"></div>
 </div>
@@ -94,13 +94,11 @@
   <h1 class="text-center">{{title}} {{node.name}}</h1>
   {%- endif %}
   <hr class="border-dark opacity-100">
-
   <div class="wh-100 px-3 scrollbar-hidden">
-
-  {{ node.html }}
-  {{ brief_groups( node ) }}
-  {{ template_listing( node, brief_entries ) }}
-
+  {{- node.auto }}
+  {{- node.user }}
+  {{- brief_groups( node ) }}
+  {{- template_listing( node, brief_entries ) }}
   <div class="my-5"></div>
   </div>
 </div>

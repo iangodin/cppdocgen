@@ -34,17 +34,17 @@ class HTMLGenerator:
         self.generate_node( tops[0], [] )
 
     def load_nodes( self, parent_id = 0 ):
-        rows = self.cursor.execute( f'SELECT id, name, kind, link, html, short FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
+        rows = self.cursor.execute( f'SELECT id, name, kind, link, user, auto FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
         nodes = []
         for row in rows:
-            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'html': row[4], 'short': row[5] }
+            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'user': row[4], 'auto': row[5] }
             child['children'] = self.load_nodes( child['id'] )
             nodes.append( child )
         return nodes
 
     def generate_node( self, node, parents ):
         if node['kind'] in [ 'class', 'struct', 'namespace', 'global' ]:
-            filename = self.topdir / node['link']
+            filename = self.topdir / Path( *node['link'].split( '/' ) )
             assert '#' not in str( filename ), 'expected class/struct/namespace/global without fragment'
             filename.parent.mkdir( parents = True, exist_ok = True )
             template = self.env.get_template( node['kind'] + ".html" )
