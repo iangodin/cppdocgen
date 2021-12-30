@@ -179,17 +179,17 @@ class Cleanup:
 
     def html_params( self, params ):
         if len( params ) == 0 :
-            return '<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>'
+            return '<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>)</span>'
         elif len( params ) == 1 :
             param = self.html_arg( params[0] ).rstrip( ',' )
-            return f'<span {hl_s}>(</span> {param} <span {hl_s}>);</span>'
+            return f'<span {hl_s}>(</span> {param} <span {hl_s}>)</span>'
         else:
             lines = []
             lines.append( f'<span {hl_s}>(</span>' )
             argwidth = 4 + max( [ len( a['type'] ) for a in params] )
             for arg in params:
                 lines.append( self.html_arg( arg, argwidth ) )
-            lines[-1] = lines[-1].rstrip( ',' ) + f' <span {hl_s}>);</span>'
+            lines[-1] = lines[-1].rstrip( ',' ) + f' <span {hl_s}>)</span>'
             return '\n'.join( lines )
 
     def html_template_param( self, param, tmpwidth = 0 ):
@@ -232,7 +232,7 @@ class Cleanup:
         return new_lines
 
     def display_friend( self, friend ):
-        return friend['friend']['html']
+        return [ friend['name'] ]
 
     def display_field( self, field ):
         return self.display_variable( field )
@@ -240,8 +240,13 @@ class Cleanup:
     def display_function( self, fn ):
         result = self.html_type_space( fn['result'] )
         name = self.html_func( fn['name'] )
+        specifiers = ''.join( [ f' <span {hl_k}>' + s + '</span>' for s in fn['specifiers'] ] )
         line = f'<code>{result}{name}'
         line += self.html_params( fn['params'] )
+        line += specifiers
+        if fn['is_default']:
+            line += f' <span {hl_s}>=</span> <span {hl_k}>default</span>'
+        line += f'<span {hl_s}>;</span>'
 
         new_lines = []
         new_lines.append( r'<div class="highlight"><pre>' )

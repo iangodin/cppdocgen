@@ -16,7 +16,7 @@ class CPPDatabase:
 
     def write( self, node, parent_id = 0 ):
         if node.get( 'access', 'public' ) == 'private':
-            if len( node['html'] ) == 0:
+            if len( node['user_doc'] ) == 0:
                 return
 
         kind = node['kind']

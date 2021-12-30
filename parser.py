@@ -1,11 +1,19 @@
 
 from clang.cindex import AccessSpecifier, CursorKind, Cursor
 from pathlib import Path, PosixPath
-from pprint import pprint
+from pprint import pprint, pformat
 from functools import reduce
 import yaml
 
-htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
+html_types = [ 'global', 'class', 'struct', 'namespace' ]
+
+def max_str( *lst ):
+    assert lst, "expected list with at least one thing"
+    result = lst[0]
+    for s in lst:
+        if len( s ) < len( result ):
+            result = s
+    return result
 
 class Parser:
     def __init__( parser, topdir ):
@@ -17,9 +25,7 @@ class Parser:
         parser.params = None
         parser.templates = None
         parser.type = None
-
-    def __call__( parser, cursor ):
-        assert False, 'not here'
+        parser.parents = None
 
     def create_tree( parser ):
         top = {
@@ -37,10 +43,11 @@ class Parser:
 
         for node in parser.nodes:
             if node['kind'] != 'file':
+                assert len( node['parent'] ) > 0, 'no parents in ' + pformat( node, sort_dicts=False )
                 node['parent'][0] = 'global'
                 pkey = '/'.join( node['parent'] )
                 if pkey in lookup:
-                    if node['kind'] in htmlTypes:
+                    if node['kind'] in html_types:
                         node['link'] = '/' + str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
                     else:
                         node['link'] = '#' + node['name']
@@ -66,6 +73,7 @@ class Parser:
                 overloads = {}
                 dups = node['children']
                 for n in dups:
+                    assert 'type' in n, 'missing type ' + pformat( n, sort_dicts=False )
                     t = n['type']
                     if t in overloads:
                         parser.merge_identical( overloads[t], n )
@@ -94,8 +102,11 @@ class Parser:
                     parser.templates = node['templates']
                 if 'params' in node:
                     parser.params = node['params']
+                old_parents = parser.parents
+                parser.parents = node['parent']
                 for c in cursor.get_children():
                     parser.parse( c )
+                parser.parents = old_parents
                 parser.templates = old_templates
                 parser.params = old_params
                 if node['kind'] != 'group':
@@ -113,11 +124,16 @@ class Parser:
 
     def get_parent( parser, cursor ):
         chain = []
-        p = cursor.semantic_parent
+        p = cursor.semantic_parent or cursor.lexical_parent
         while isinstance( p, Cursor ):
             chain.append( p.spelling )
             p = p.semantic_parent
         chain.reverse()
+        if len( chain ) == 0:
+            if parser.parents:
+                chain = parser.parents.copy()
+            else:
+                chain = [ cursor.location.file ]
         return chain
 
     def gather_comments( parser, node ):
@@ -125,22 +141,6 @@ class Parser:
         if node.raw_comment != None:
             result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
         return result
-
-    def UNKNOWN( parser, cursor ):
-        if cursor.kind.name not in parser.warned:
-            print( "unknown node type " + cursor.kind.name )
-        parser.warned.add( cursor.kind.name )
-        node = {
-            'kind': 'unknown',
-            'name': cursor.spelling,
-            'parent': parser.get_parent( cursor ),
-            'link': None,
-            'info': str( cursor.kind.name ),
-            'location': cursor.location,
-            'children': [],
-        }
-        # TODO should we process children of unknown??
-        return node
 
     def access( parser, cursor ):
         a = cursor.access_specifier
@@ -158,8 +158,7 @@ class Parser:
         return overload
 
     def merge_identical( self, overload, node ):
-        if len( overload['user_doc'] ) < len( node['user_doc'] ):
-            overload['user_doc'] = node['user_doc']
+        overload['user_doc'] = max_str( overload['user_doc'], node['user_doc'] )
         return overload
 
     def merge_duplicate( self, node1, node2 ):
@@ -167,7 +166,7 @@ class Parser:
         if node1 == None:
             node1 = node2
         else:
-            if node1['kind'] != 'duplicate':
+            if node1['kind'] in [ 'function', 'method', 'field', 'varible' ]:
                 copy = node1.copy()
                 node1.clear()
                 node1.update( {
@@ -177,9 +176,36 @@ class Parser:
                     'link': copy['link'],
                     'children': [ copy, node2 ]
                 } )
+            elif node1['kind'] != 'duplicate':
+                node1['auto_doc'] = max_str( node1['auto_doc'], node2['auto_doc'] )
+                node1['user_doc'] = max_str( node1['user_doc'], node2['user_doc'] )
             else:
                 node1['children'].append( node2 )
         return node1
+
+    def UNKNOWN( parser, cursor ):
+        if cursor.kind.name not in parser.warned:
+            print( "unknown node type " + cursor.kind.name )
+            msg = '  '
+            for tok in cursor.get_tokens():
+                msg = msg + ' ' + tok.spelling
+            print( msg )
+            print( '    ' + str( cursor.location ) )
+        parser.warned.add( cursor.kind.name )
+        node = {
+            'kind': 'unknown',
+            'name': cursor.spelling,
+            'parent': parser.get_parent( cursor ),
+            'link': None,
+            'group': parser.group,
+            'comments': '',
+            'type': cursor.type.spelling,
+            'result': cursor.result_type.spelling,
+            'info': str( cursor.kind.name ),
+            'location': cursor.location,
+            'children': [],
+        }
+        return None
 
     def TRANSLATION_UNIT( parser, cursor ):
         result = {
@@ -291,6 +317,7 @@ class Parser:
 
     def CXX_METHOD( parser, cursor ):
         comments = parser.gather_comments( cursor )
+        specifiers = ['const'] if cursor.is_const_method() else []
         result = {
             'kind': 'method',
             'name': cursor.spelling,
@@ -300,6 +327,9 @@ class Parser:
             'comments': comments,
             'type': cursor.type.spelling,
             'access': parser.access( cursor ),
+            'qualifiers': [],
+            'specifiers': specifiers,
+            'is_default': cursor.is_default_method(),
             'result': cursor.result_type.spelling,
             'params': [],
             'children': [],
@@ -339,7 +369,7 @@ class Parser:
         comments = parser.gather_comments( cursor )
         result = {
             'kind': 'friend',
-            'name': friend['name'],
+            'name': 'friend',
             'parent': parser.get_parent( cursor ),
             'link': None,
             'comments': comments,
@@ -370,6 +400,9 @@ class Parser:
             'parent': parser.get_parent( cursor ),
             'link': None,
             'group': parser.group,
+            'qualifiers': [],
+            'specifiers': [],
+            'is_default': False,
             'comments': comments,
             'type': cursor.type.spelling,
             'result': cursor.result_type.spelling,
@@ -398,6 +431,8 @@ class Parser:
             'link': None,
             'group': parser.group,
             'comments': comments,
+            'qualifiers': [],
+            'specifiers': [],
             'type': cursor.type.spelling,
             'result': cursor.result_type.spelling if kind != 'constructor' else '',
             'templates': [],
@@ -452,3 +487,4 @@ class Parser:
 
     def COMPOUND_STMT( parser, cursor ):
         return None
+

@@ -1,8 +1,6 @@
 
-template<typename Value>
-class Template
+struct Test
 {
-public:
-    template<typename T>
-    test( void );
+    Test( void ) = default;
+    void doit( int x, int y ) const;
 };
