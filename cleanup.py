@@ -177,20 +177,40 @@ class Cleanup:
         aname = self.html_var( arg['name'] )
         return f'{atype}{aname},'
 
+    def html_params( self, params ):
+        if len( params ) == 0 :
+            return '<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>'
+        elif len( params ) == 1 :
+            param = self.html_arg( params[0] ).rstrip( ',' )
+            return f'<span {hl_s}>(</span> {param} <span {hl_s}>);</span>'
+        else:
+            lines = []
+            lines.append( f'<span {hl_s}>(</span>' )
+            argwidth = 4 + max( [ len( a['type'] ) for a in params] )
+            for arg in params:
+                lines.append( self.html_arg( arg, argwidth ) )
+            lines[-1] = lines[-1].rstrip( ',' ) + f' <span {hl_s}>);</span>'
+            return '\n'.join( lines )
+
+    def html_template_param( self, param, tmpwidth = 0 ):
+        ttype = self.html_type_space( param['type'], tmpwidth )
+        tname = self.html_var( param['name'] )
+        return f'{ttype}{tname},'
+
     def html_template( self, tmps ):
         result = []
         if tmps != None:
             if len( tmps ) == 0:
                 result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;&gt;</span>' )
+            elif len( tmps ) == 1:
+                tparam = self.html_template_param( tmps[0] ).rstrip( ',' )
+                result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;</span> {tparam} <span {hl_s}>&gt;</span>' )
             else:
                 tmpwidth = 4 + max( [len(t['type']) for t in tmps] )
                 result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;</span>' )
                 for t in tmps:
-                    ttype = self.html_type_space( t['type'], tmpwidth )
-                    tname = self.html_var( t['name'] )
-                    result.append( f'{ttype}{tname},' )
-                result[-1] = result[-1].rstrip( ',' )
-                result.append( f'<span {hl_s}>&gt;</span>' )
+                    result.append( self.html_template_param( t, tmpwidth ) )
+                result[-1] = result[-1].rstrip( ',' ) + ' <span {hl_s}>&gt;</span>'
         return result
 
     def display_constructor( self, method ):
@@ -200,24 +220,7 @@ class Cleanup:
         return self.display_method( method )
 
     def display_method( self, method ):
-        name = self.html_func( method['name'] )
-        args = method['params']
-        result = self.html_type_space( method['result'] )
-
-        new_lines = []
-        new_lines.append( r'<div class="highlight"><pre>' )
-        new_lines += self.html_template( method.get( 'templates', None ) )
-        if len( args ) == 0 :
-            new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
-        else:
-            new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span>' )
-            argwidth = 4 + max( [ len( a['type'] ) for a in args] )
-            for arg in args:
-                new_lines.append( self.html_arg( arg, argwidth ) )
-            new_lines[-1] = new_lines[-1].rstrip( ',' )
-            new_lines.append( f'<span {hl_s}>);</span>' )
-        new_lines.append( r'</pre></code></div>' )
-        return new_lines
+        return self.display_function( method )
 
     def display_variable( self, var ):
         name = self.html_var( var['name'] )
@@ -235,25 +238,16 @@ class Cleanup:
         return self.display_variable( field )
 
     def display_function( self, fn ):
-        new_lines = [ r'<div class="highlight"><pre>' ]
-
         result = self.html_type_space( fn['result'] )
-
-        new_lines += self.html_template( fn.get( 'templates', None ) )
-
         name = self.html_func( fn['name'] )
-        args = fn['params']
-        if len( args ) == 0 :
-            new_lines.append( f'{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
-        else:
-            new_lines.append( f'{result}{name}<span {hl_s}>(</span>' )
-            argwidth = 4 + max( [ len( a['type'] ) for a in args] )
-            for arg in args:
-                new_lines.append( self.html_arg( arg, argwidth ) )
-            new_lines[-1] = new_lines[-1].rstrip( ',' )
-            new_lines.append( f'<span {hl_s}>);</span>' )
-        new_lines.append( r'</pre></code></div>' )
-        new_lines[2] = '<code>' + new_lines[2]
+        line = f'<code>{result}{name}'
+        line += self.html_params( fn['params'] )
+
+        new_lines = []
+        new_lines.append( r'<div class="highlight"><pre>' )
+        new_lines += self.html_template( fn.get( 'templates', None ) )
+        new_lines += line.splitlines()
+        new_lines.append( r'</code></pre></div>' )
         return new_lines
 
     def display_class( self, cls ):
