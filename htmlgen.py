@@ -30,7 +30,7 @@ class HTMLGenerator:
     def generate( self ):
         tops = self.load_nodes()
         assert len( tops ) == 1, 'expect only one global node'
-        print( tops[0]['link'] )
+        tops[0]['name'] = ''
         self.generate_node( tops[0], [] )
 
     def load_nodes( self, parent_id = 0 ):
