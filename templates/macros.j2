@@ -41,9 +41,9 @@
 {%- macro toc_entries( title, kind, node ) %}
 {%- set entries = list( node.children | filter_kind( kind ) ) %}
 {%- if entries %}
-<div class="badge rounded-pill bg-light text-black my-1">{{title}}</div>
+<div class="badge rounded-pill bg-dark text-white my-1">{{title}}</div>
 {%- for n in node.children | filter_kind( kind ) %}
-    <a class="btn-link text-white my-1" href="{{n.link}}">{{n.name}}</a>
+    <a class="btn-link text-black my-1" href="{{n.link}}">{{n.name}}</a>
 {%- endfor %}
 {%- endif %}
 {%- endmacro %}
@@ -51,7 +51,7 @@
 {%- macro toc_groups( node ) %}
 {%- set entries = list( node.children | filter_kind( 'group' ) ) %}
 {%- for group in entries %}
-<div class="badge rounded-pill bg-light text-dark">{{group.name}}</div>
+<div class="badge rounded-pill bg-dark text-white">{{group.name}}</div>
 {%- for n in group.children %}
   <a class="nav-link" href="{{n.link}}>{{n.name}}</a>
 {%- endfor %}
@@ -73,11 +73,11 @@
 {%- endmacro %}
 
 {%- macro toc_listing( node, title ) %}
-<div class="d-flex flex-column col-2 h-100 px-2 bg-dark scrollbar-hidden">
+<div class="d-flex flex-column col-2 h-100 px-2 bg-light scrollbar-hidden border border-dark border-1 border-top-0 border-left-0 border-bottom-0">
 {%- if node.kind == 'global' %}
-  <div class="text-white text-center font-weight-bold">{{title}}</div>
+  <div class="text-black text-center font-weight-bold">{{title}}</div>
 {%- else %}
-  <div class="text-white text-center font-weight-bold">{{title}} {{node.name}}</div>
+  <div class="text-black text-center font-weight-bold">{{title}} {{node.name}}</div>
 {%- endif %}
 {{- toc_groups( node ) }}
 {{- template_listing( node, toc_entries ) }}

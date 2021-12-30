@@ -75,6 +75,29 @@ hr.overload {
   opacity: 0.75;
 }
 
+.breadcrumb {
+  margin: 0;
+}
+
+.breadcrumb-item+.breadcrumb-item {
+  font-weight: bold;
+  padding: 0;
+}
+
+.breadcrumb-item+.breadcrumb-item::before {
+  font-weight: bold;
+  padding: 0 0.5rem;
+  content: "::";
+}
+
+.breadcrumb a {
+  color: white;
+}
+
+.breadcrumb li.active {
+  color: lightgrey;
+}
+
 .scroll-y {
     overflow: scroll;
 }
@@ -87,41 +110,11 @@ hr.overload {
   margin: 0 -24px;
 }
 
-/*
-nav.nav {
-  height: 100%;
+.navbar-custom {
+    height: 40px;
+    border-width: 0 0 5px;
+    border-color: black;
 }
-
-nav.nav a {
-  color: white;
-}
-
-nav.nav .title {
-  font-weight: bold;
-  text-align: center;
-}
-
-nav hr {
-  color: white;
-  margin: 0.5rem 0;
-}
-
-.nav-link {
-  padding-right: 0;
-  padding-left: 0;
-  padding-top: 0.25em;
-  padding-bottom: 0.25em;
-}
-
-nav.nav .badge {
-  margin-top: 1.5em;
-  margin-bottom: 0.25em;
-}
-
-.nav-link:hover {
-  color: white;
-}
-*/
 
 dl {
   display: flex;

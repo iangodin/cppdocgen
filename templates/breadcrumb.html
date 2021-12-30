@@ -1,10 +1,13 @@
-<nav aria-label="navbar" class="navbar-dark bg-dark text-white w-100 fixed-top">
-  <div class="container-fluid">
+<nav aria-label="navbar" class="navbar-dark fixed-top navbar-custom bg-dark text-light w-100">
+  <div class="container-fluid d-flex align-items-center h-100">
   <ol class="breadcrumb">
-  {%- for parent in parents %}
-    <li class="breadcrumb-item"><a href="/{{parent.link}}">{{parent.name}}</a></li>
+    <li class="breadcrumb-item"><a href="/"><span class="material-icons">home</span></a></li>
+  {%- for parent in parents[1:] %}
+    <li class="breadcrumb-item"><a href="{{parent.link}}">{{parent.name}}</a></li>
   {%- endfor %}
-  <li class="breadcrumb-item active">{{node.name}}</li>
+  {%- if node.name -%}
+    <li class="breadcrumb-item active">{{node.name}}</li>
+  {%- endif %}
   </ol>
   </div>
 </nav>
