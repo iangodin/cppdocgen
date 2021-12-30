@@ -88,16 +88,16 @@ class Parser:
             if node != None:
                 node['cursor_kind'] = str( cursor.kind )
                 parser.nodes.append( node );
+                old_templates = parser.templates
+                old_params = parser.params
+                if 'templates' in node:
+                    parser.templates = node['templates']
+                if 'params' in node:
+                    parser.params = node['params']
                 for c in cursor.get_children():
                     parser.parse( c )
-                if parser.params != None:
-                    if 'params' in node:
-                        node['params'] = parser.params
-                        parser.params = None
-                if parser.templates != None:
-                    if 'templates' in node:
-                        node['templates'] = parser.templates
-                        parser.templates = None
+                parser.templates = old_templates
+                parser.params = old_params
                 if node['kind'] != 'group':
                     parser.group = saved_group
 

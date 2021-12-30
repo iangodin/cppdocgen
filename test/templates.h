@@ -43,7 +43,4 @@ public:
     /// Variadic template method.
     template<typename ...T>
     void method2( T &&...ts );
-
-    /// Variable from template.
-    Value value;
 };
