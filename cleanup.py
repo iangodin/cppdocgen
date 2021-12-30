@@ -244,7 +244,7 @@ class Cleanup:
         line = f'<code>{result}{name}'
         line += self.html_params( fn['params'] )
         line += specifiers
-        if fn['is_default']:
+        if 'is_default' in fn and fn['is_default']:
             line += f' <span {hl_s}>=</span> <span {hl_k}>default</span>'
         line += f'<span {hl_s}>;</span>'
 
