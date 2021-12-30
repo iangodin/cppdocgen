@@ -1,0 +1,130 @@
+.admonition {
+  border-width: 0 0 0 4px;
+  border-style: solid;
+  text-align: left;
+  box-shadow: rgba(0, 0, 0, 0.06) 0px 1px 3px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px;
+  margin: 0.5em 0;
+}
+
+.admonition p {
+  padding: 0.25rem 0.25rem;
+  margin: 0;
+  text-align: left;
+}
+
+.admonition p.admonition-title {
+  color: #222;
+  padding: 0.1rem 0.25rem;
+  margin: 0;
+  font-weight: bold;
+}
+
+.admonition .admonition-title:before {
+  font-family: "Material Icons Outlined";
+  font-size: 1.25rem;
+  display: inline-flex;
+  padding-bottom: 2px;
+  vertical-align: middle;
+  padding-right: 0.25em;
+}
+
+.admonition.note,
+.admonition.info,
+.admonition.tip,
+.admonition.quote,
+.admonition.example {
+  border-color: rgba( 0, 0, 255, 0.5 );
+}
+
+.admonition.note .admonition-title,
+.admonition.info .admonition-title,
+.admonition.tip .admonition-title,
+.admonition.quote .admonition-title,
+.admonition.example .admonition-title {
+  background-color: rgba( 0, 0, 255, 0.04 );
+}
+
+.admonition.note .admonition-title:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "note";
+}
+
+.admonition.info .admonition-title:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "info";
+}
+
+.admonition.tip .admonition-title:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "lightbulb";
+}
+
+.admonition.quote .admonition-title:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  font-family: "Material Icons";
+  content: "format_quote";
+}
+
+.admonition.example .admonition-title:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "science";
+}
+
+.admonition.success {
+  border-color: rgba( 0, 175, 0, 0.6 );
+}
+
+.admonition.success .admonition-title {
+  background-color: rgba( 0, 175, 0, 0.04 );
+}
+
+.admonition.success .admonition-title:before {
+  color: rgba( 0, 175, 0, 0.8 );
+  content: "check_circle";
+}
+
+.admonition.important,
+.admonition.warning {
+  border-color: rgba( 220, 220, 0, 0.8 );
+}
+
+.admonition.important .admonition-title,
+.admonition.warning .admonition-title {
+  background-color: rgba( 220, 220, 0, 0.05 );
+}
+
+.admonition.important .admonition-title:before {
+  color: rgba( 220, 220, 0, 0.7 );
+  content: "new_releases";
+}
+
+.admonition.warning .admonition-title:before {
+  color: rgba( 220, 220, 0, 0.7 );
+  content: "report_problem";
+}
+
+.admonition.danger,
+.admonition.failure,
+.admonition.error,
+.admonition.bug {
+  border-color: rgba( 200, 0, 0, 0.75 );
+}
+
+.admonition.danger .admonition-title,
+.admonition.failure .admonition-title,
+.admonition.error .admonition-title,
+.admonition.bug .admonition-title {
+  background-color: rgba( 200, 0, 0, 0.04 );
+}
+
+.admonition.danger .admonition-title:before,
+.admonition.failure .admonition-title:before,
+.admonition.error .admonition-title:before,
+.admonition.bug .admonition-title:before {
+  color: rgba( 200, 0, 0, 0.75 );
+}
+
+.admonition.danger .admonition-title:before { content: "bolt"; }
+.admonition.failure .admonition-title:before { content: "error_outline"; }
+.admonition.error .admonition-title:before { content: "error_outline"; }
+.admonition.bug .admonition-title:before { content: "bug_report"; }

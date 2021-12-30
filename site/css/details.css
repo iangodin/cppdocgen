@@ -1,0 +1,160 @@
+details {
+  border-width: 0 0 0 4px;
+  border-style: solid;
+  text-align: left;
+  box-shadow: rgba(0, 0, 0, 0.06) 0px 1px 3px 0px, rgba(0, 0, 0, 0.03) 0px 1px 2px 0px;
+  margin: 0.5em 0;
+}
+
+details p {
+  padding: 0.25em 0.25em;
+  margin: 0;
+  text-align: left;
+}
+
+details summary {
+  color: #222;
+  padding: 0.1rem 0.25rem;
+  margin: 0;
+  font-weight: bold;
+  list-style: none;
+}
+
+details summary::-webkit-details-marker {
+  display: none;
+}
+
+details summary:before {
+  font-family: "Material Icons Outlined";
+  font-size: 1.25rem;
+  display: inline-flex;
+  padding-bottom: 2px;
+  vertical-align: middle;
+  padding-right: 0.25em;
+}
+
+details summary:after {
+  font-family: "Material Icons Outlined";
+  font-size: 1.25rem;
+  display: inline-flex;
+  padding-bottom: 2px;
+  vertical-align: middle;
+  padding-right: 0.25em;
+  text-align: right;
+  float: right;
+  content: "expand_more";
+}
+
+details[open] summary:after {
+  content: "expand_less";
+}
+
+details.note,
+details.info,
+details.tip,
+details.quote,
+details.example {
+  border-color: rgba( 0, 0, 255, 0.5 );
+}
+
+details.note summary,
+details.info summary,
+details.tip summary,
+details.quote summary,
+details.example summary {
+  background-color: rgba( 0, 0, 255, 0.04 );
+}
+
+details.note summary:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "note";
+}
+
+details.info summary:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "info";
+}
+
+details.tip summary:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "lightbulb";
+}
+
+details.quote summary:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  font-family: "Material Icons";
+  content: "format_quote";
+}
+
+details.example summary:before {
+  color: rgba( 0, 0, 255, 0.8 );
+  content: "science";
+}
+
+details.success {
+  border-color: rgba( 0, 175, 0, 0.6 );
+}
+
+details.success summary {
+  background-color: rgba( 0, 175, 0, 0.04 );
+}
+
+details.success summary:before {
+  color: rgba( 0, 175, 0, 0.8 );
+  content: "check_circle";
+}
+
+details.important,
+details.warning {
+  border-color: rgba( 220, 220, 0, 0.8 );
+}
+
+details.important summary,
+details.warning summary {
+  background-color: rgba( 220, 220, 0, 0.05 );
+}
+
+details.important summary:before {
+  color: rgba( 220, 220, 0, 0.7 );
+  content: "new_releases";
+}
+
+details.warning summary:before {
+  color: rgba( 220, 220, 0, 0.7 );
+  content: "report_problem";
+}
+
+details.danger,
+details.failure,
+details.error,
+details.bug {
+  border-color: rgba( 200, 0, 0, 0.75 );
+}
+
+details.danger summary,
+details.failure summary,
+details.error summary,
+details.bug summary {
+  background-color: rgba( 200, 0, 0, 0.04 );
+}
+
+details.danger summary:before {
+  color: rgba( 200, 0, 0, 0.75 );
+  content: "bolt";
+}
+
+details.failure summary:before {
+  color: rgba( 200, 0, 0, 0.75 );
+  content: "error_outline";
+}
+
+details.error summary:before {
+  color: rgba( 200, 0, 0, 0.75 );
+  content: "error_outline";
+}
+
+details.bug summary:before {
+  color: rgba( 200, 0, 0, 0.75 );
+  content: "bug_report";
+}
+
