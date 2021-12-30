@@ -16,6 +16,32 @@ hl_v = 'class="nv"' # Variable
 hl_s = 'class="o"' # Symbol
 hl_k = 'class="k"' # Keyword
 
+doxy_class = re.compile( r'[\s]*@class .*' )
+doxy_brief = re.compile( r'[\s]*@brief(.*)' )
+doxy_param = re.compile( r'[\s]*@param[\s]+([\w]+)[\s]*(.*)' )
+
+def doxy_filter( lines ):
+    found_param = False
+    result = []
+    for line in lines:
+        match = doxy_brief.match( line )
+        if match:
+            result.append( match.group( 1 ) )
+            result.append( '' )
+            continue
+        match = doxy_class.match( line )
+        if match:
+            continue
+        match = doxy_param.match( line )
+        if match:
+            if not found_param:
+                result.append( 'Parameters:' )
+                found_param = True
+            result.append( '  ' + match.group( 1 ) + ' => ' + match.group( 2 ) )
+            continue
+        result.append( line )
+    return result
+
 class Cleanup:
     def __init__( self ):
         self.header = re.compile( r'[\s]*([^:]*)[:][\s]*' )
@@ -36,7 +62,8 @@ class Cleanup:
             ], extension_configs = configs )
 
     def __call__( cleaner, node ):
-        mdown = cleaner.generate_markdown( node )
+        mdown = doxy_filter( cleaner.cleanup_comments( node ) )
+        mdown = cleaner.convert_to_markdown( mdown )
 
         node['user_doc'] = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
 
@@ -49,7 +76,7 @@ class Cleanup:
             del node['children']
             node['children'] = c
 
-    def generate_markdown( cleaner, node ):
+    def cleanup_comments( cleaner, node ):
         lines = []
         if 'comments' in node:
             for c in node['comments']:
@@ -70,8 +97,11 @@ class Cleanup:
                 else:
                     assert False, 'unknown comment: ' + c
             lines = cleaner.normalize_spaces( lines )
-            lines = cleaner.simple_headers( lines )
-            lines = cleaner.simple_definition( lines )
+        return lines
+
+    def convert_to_markdown( cleaner, lines ):
+        lines = cleaner.simple_headers( lines )
+        lines = cleaner.simple_definition( lines )
         return lines
 
     def count_leading_spaces( self, line ):

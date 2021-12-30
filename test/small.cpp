@@ -1,6 +1,8 @@
 
-struct Test
-{
-    Test( void ) = default;
-    void doit( int x, int y ) const;
-};
+/// @brief X and stuff
+int x;
+
+/// @brief Test
+/// @param x X parameter
+/// @param y Y parameter
+void func( int x, int y );
