@@ -1,3 +1,7 @@
 
-#include "simple.h"
-
+class Template
+{
+public:
+    template<typename T>
+    Template( void );
+};

@@ -158,7 +158,8 @@ class Parser:
         return overload
 
     def merge_identical( self, overload, node ):
-        overload['user_doc'] += node['user_doc']
+        if len( overload['user_doc'] ) < len( node['user_doc'] ):
+            overload['user_doc'] = node['user_doc']
         return overload
 
     def merge_duplicate( self, node1, node2 ):
@@ -384,9 +385,11 @@ class Parser:
 
         # Is there a more reliable way to tell if a template is a constructor?
         # But this should work well enough
-        if cursor.spelling == parent.spelling:
-            if parent.kind in [ CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.CLASS_DECL ]:
+        if parent.kind in [ CursorKind.CLASS_DECL, CursorKind.STRUCT_DECL, CursorKind.CLASS_TEMPLATE ]:
+            if cursor.spelling == parent.displayname:
                 kind = 'constructor'
+            else:
+                kind = 'method'
 
         result = {
             'kind': kind,

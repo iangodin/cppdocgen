@@ -206,6 +206,7 @@ class Cleanup:
 
         new_lines = []
         new_lines.append( r'<div class="highlight"><pre>' )
+        new_lines += self.html_template( method.get( 'templates', None ) )
         if len( args ) == 0 :
             new_lines.append( f'<code>{result}{name}<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>);</span>' )
         else:
