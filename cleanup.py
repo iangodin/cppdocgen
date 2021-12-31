@@ -7,15 +7,6 @@ from pprint import pprint
 
 htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
 
-# Pygments highlight classes
-hl_t = 'class="kt"' # Type
-hl_n = 'class="nt"' # Tag
-hl_f = 'class="nf"' # Function
-hl_c = 'class="nc"' # Class
-hl_v = 'class="nv"' # Variable
-hl_s = 'class="o"' # Symbol
-hl_k = 'class="k"' # Keyword
-
 doxy_class = re.compile( r'[\s]*@class .*' )
 doxy_brief = re.compile( r'[\s]*@brief(.*)' )
 doxy_param = re.compile( r'[\s]*@param[\s]+([\w]+)[\s]*(.*)' )
@@ -47,7 +38,8 @@ class Cleanup:
         self.header = re.compile( r'[\s]*([^:]*)[:][\s]*' )
         self.definition = re.compile( r'[\s]*((?!=>).+)=>(.*)' )
         configs = {
-            'markdown_blockdiag': { 'format': 'svg' }
+            'markdown_blockdiag': { 'format': 'svg' },
+            'pymdownx.highlight': { 'use_pygments': False },
         }
         self.md = markdown.Markdown( extensions = [
                 'def_list',
@@ -68,7 +60,7 @@ class Cleanup:
         node['user_doc'] = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
 
         display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
-        node['auto_doc'] = display( node )
+        node['auto_doc'] = cleaner.md.convert( '\n'.join( display( node ) ) ).splitlines()
 
         # Keep the children at the end of the node dictionary
         if 'children' in node:
@@ -165,82 +157,64 @@ class Cleanup:
     def html_type_space( self, tname, width = 0 ):
         result = ''
         if len( tname ) != 0:
-            tname = html.escape( tname.rjust( width ) )
-            result = f'<span {hl_t}>{tname}</span> '
+            tname = tname.rjust( width )
+            result = f'{tname} '
         return result 
 
     def html_type( self, tname, width = 0 ):
         result = ''
         if len( tname ) != 0:
-            tname = html.escape( tname.rjust( width ) )
-            result = f'<span {hl_t}>{tname}</span>'
-        return result 
-
-    def html_tag( self, tname ):
-        tname = html.escape( tname )
-        result = f'<span {hl_n}>{tname}</span>'
-        return result 
-
-    def html_func( self, name ):
-        result = f'<span {hl_f}>{name}</span>'
-        return result 
-
-    def html_var( self, name ):
-        result =  f'<span {hl_v}>{name}</span>'
-        return result 
-
-    def html_symbol( self, sym ):
-        sym = html.escape( sym )
-        result =  f'<span {hl_v}>{sym}</span>'
+            tname = tname.rjust( width )
+            result = f'{tname}'
         return result 
 
     def html_class( self, name ):
-        result =  f'<span {hl_k}>class</span> <span {hl_c}>{name}</span>'
+        result =  f'class {name}'
         return result 
 
     def html_struct( self, name ):
-        result =  f'<span {hl_k}>struct</span> <span {hl_c}>{name}</span>'
+        result =  f'struct {name}'
         return result 
 
     def html_arg( self, arg, argwidth = 0 ):
         atype = self.html_type_space( arg['type'], argwidth )
-        aname = self.html_var( arg['name'] )
+        aname = arg['name']
         return f'{atype}{aname},'
 
     def html_params( self, params ):
         if len( params ) == 0 :
-            return '<span {hl_s}>(</span> <span {hl_k}>void</span> <span {hl_s}>)</span>'
+            return '( void )'
         elif len( params ) == 1 :
             param = self.html_arg( params[0] ).rstrip( ',' )
-            return f'<span {hl_s}>(</span> {param} <span {hl_s}>)</span>'
+            return f'( {param} )'
         else:
             lines = []
-            lines.append( f'<span {hl_s}>(</span>' )
+            lines.append( f'(>' )
             argwidth = 4 + max( [ len( a['type'] ) for a in params] )
             for arg in params:
                 lines.append( self.html_arg( arg, argwidth ) )
-            lines[-1] = lines[-1].rstrip( ',' ) + f' <span {hl_s}>)</span>'
+            lines[-1] = lines[-1].rstrip( ',' ) + f' )'
             return '\n'.join( lines )
 
     def html_template_param( self, param, tmpwidth = 0 ):
         ttype = self.html_type_space( param['type'], tmpwidth )
-        tname = self.html_var( param['name'] )
+        tname = param['name']
         return f'{ttype}{tname},'
 
     def html_template( self, tmps ):
         result = []
         if tmps != None:
             if len( tmps ) == 0:
-                result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;&gt;</span>' )
+                result.append( f'template <>' )
             elif len( tmps ) == 1:
                 tparam = self.html_template_param( tmps[0] ).rstrip( ',' )
-                result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;</span> {tparam} <span {hl_s}>&gt;</span>' )
+                result.append( f'template < {tparam} >' )
             else:
                 tmpwidth = 4 + max( [len(t['type']) for t in tmps] )
-                result.append( f'<span {hl_k}>template</span> <span {hl_s}>&lt;</span>' )
+                result.append( f'template <' )
                 for t in tmps:
                     result.append( self.html_template_param( t, tmpwidth ) )
-                result[-1] = result[-1].rstrip( ',' ) + ' <span {hl_s}>&gt;</span>'
+                result[-1] = result[-1].rstrip( ',' ) + ' >'
         return result
 
     def display_constructor( self, method ):
@@ -253,12 +227,12 @@ class Cleanup:
         return self.display_function( method )
 
     def display_variable( self, var ):
-        name = self.html_var( var['name'] )
+        name = var['name']
         result = self.html_type_space( var['type'] )
         new_lines = []
-        new_lines.append( r'<div class="highlight"><pre>' )
-        new_lines.append( f'<code>{result}{name}<span {hl_s}>;</span>' )
-        new_lines.append( r'</pre></code></div>' )
+        new_lines.append( r'``` .cpp' )
+        new_lines.append( f'{result}{name};' )
+        new_lines.append( r'```' )
         return new_lines
 
     def display_friend( self, friend ):
@@ -269,58 +243,54 @@ class Cleanup:
 
     def display_function( self, fn ):
         result = self.html_type_space( fn['result'] )
-        name = self.html_func( fn['name'] )
-        specifiers = ''.join( [ f' <span {hl_k}>' + s + '</span>' for s in fn['specifiers'] ] )
-        line = f'<code>{result}{name}'
+        name = fn['name']
+        specifiers = ''.join( [ f' ' + s for s in fn['specifiers'] ] )
+        line = f'{result}{name}'
         line += self.html_params( fn['params'] )
         line += specifiers
         if 'is_default' in fn and fn['is_default']:
-            line += f' <span {hl_s}>=</span> <span {hl_k}>default</span>'
-        line += f'<span {hl_s}>;</span>'
+            line += f' = default'
+        line += f';'
 
         new_lines = []
-        new_lines.append( r'<div class="highlight"><pre>' )
+        new_lines.append( r'``` .cpp' )
         new_lines += self.html_template( fn.get( 'templates', None ) )
         new_lines += line.splitlines()
-        new_lines.append( r'</code></pre></div>' )
+        new_lines.append( r'```' )
         return new_lines
 
     def display_class( self, cls ):
-        new_lines = [ r'<div class="highlight"><pre>' ]
+        new_lines = [ r'``` .cpp' ]
         new_lines += self.html_template( cls.get( 'templates', None ) )
-        new_lines.append( self.html_class( cls['name'] ) + self.html_symbol( ';' ) )
+        new_lines.append( self.html_class( cls['name'] ) + ';' )
 
-        new_lines.append( r'</pre></code></div>' )
-        new_lines[2] = '<code>' + new_lines[2]
+        new_lines.append( r'```' )
         return new_lines
 
     def display_struct( self, cls ):
-        new_lines = [ r'<div class="highlight"><pre>' ]
+        new_lines = [ r'``` .cpp' ]
         new_lines += self.html_template( cls.get( 'templates', None ) )
-        new_lines.append( self.html_struct( cls['name'] ) + self.html_symbol( ';' ) )
+        new_lines.append( self.html_struct( cls['name'] ) + ';' )
 
-        new_lines.append( r'</pre></code></div>' )
-        new_lines[2] = '<code>' + new_lines[2]
+        new_lines.append( r'```' )
         return new_lines
 
     def display_type( self, typ ):
-        new_lines = [ r'<div class="highlight"><pre>' ]
+        new_lines = [ r'``` .cpp' ]
 
         result = self.html_type( typ['type'] )
         new_lines.append( f'{result};' )
 
-        new_lines.append( r'</pre></code></div>' )
-        new_lines[2] = '<code>' + new_lines[2]
+        new_lines.append( r'```' )
         return new_lines
 
     def display_typedef( self, typedef ):
-        new_lines = [ r'<div class="highlight"><pre>' ]
+        new_lines = [ r'``` .cpp' ]
 
         name = self.html_tag( typedef['name'] )
         result = self.html_type( typedef['type'] )
-        new_lines.append( f'<span {hl_k}>using</span> {name} = {result};' )
+        new_lines.append( f'using {name} = {result};' )
 
-        new_lines.append( r'</pre></code></div>' )
-        new_lines[2] = '<code>' + new_lines[2]
+        new_lines.append( r'```' )
         return new_lines
 
