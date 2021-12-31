@@ -1,12 +1,13 @@
-{%- import 'macros.j2' as cpp with context %}
+{%- import 'toc.j2' as toc with context %}
+{%- import 'page.j2' as page with context %}
 {%- include 'prologue.html' %}
 <div class="d-flex flex-row align-content-stretch h-100">
 
 <!-- Table of content -->
-{{ cpp.toc_listing( node, 'Class' ) }}
+{{ toc.table_of_content( node, 'Class' ) }}
 
 <!-- Main content -->
-{{ cpp.standard_listing( node, 'Class' ) }}
+{{ page.info( node, 'Class' ) }}
 
 </div>
 {%- include 'epilogue.html' %}

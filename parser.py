@@ -5,7 +5,37 @@ from pprint import pprint, pformat
 from functools import reduce
 import yaml
 
-html_types = [ 'global', 'class', 'struct', 'namespace' ]
+page_types = [ 'global', 'class', 'struct', 'namespace' ]
+
+default_groups = {
+    'constructor': 'Constructors',
+    'destructor': 'Destructor',
+    'method': 'Methods',
+    'field': 'Fields',
+    'function': 'Functions',
+    'type': 'Types',
+    'class': 'Types',
+    'struct': 'Types',
+    'namespace': 'Namespaces',
+    'group': None
+}
+
+group_order = [
+    'Namespaces',
+    'Types',
+    'Functions',
+    'Variables',
+    'Constructors',
+    'Destructors',
+    'Methods',
+    'Fields',
+]
+
+def group_key( node ):
+    if node['kind'] == 'group':
+        if node['name'] in group_order:
+            return group_order.index( node['name'] )
+    return 999;
 
 def max_str( *lst ):
     assert lst, "expected list with at least one thing"
@@ -47,11 +77,16 @@ class Parser:
                 node['parent'][0] = 'global'
                 pkey = '/'.join( node['parent'] )
                 if pkey in lookup:
-                    if node['kind'] in html_types:
+                    if node['kind'] in page_types:
                         node['link'] = '/' + str( PosixPath( *node['parent'], node['name'] ).with_suffix( '.html' ) )
                     else:
                         node['link'] = '#' + node['name']
-                    parent = lookup[pkey]
+
+                    if 'group' in node and node['group']:
+                        gkey = pkey + '/' + node['group']
+                        parent = lookup[gkey]
+                    else:
+                        parent = lookup[pkey]
 
                     key = pkey + '/' + node['name']
                     dupnode = lookup.get( key, None )
@@ -63,9 +98,11 @@ class Parser:
                         lookup[key] = node
                 else:
                     pprint( pkey + " not found" )
-
         # Resolve duplicates
         for node in lookup.values():
+            if node['kind'] in [ 'global', 'namespace', 'file' ]:
+                node['children'].sort( key=group_key )
+
             if node['kind'] == 'duplicate':
                 pkey = '/'.join( node['parent'] )
                 parent = lookup[pkey]
@@ -94,6 +131,16 @@ class Parser:
             node = method( parser, cursor )
             parser.cursors.add( cursor.hash )
             if node != None:
+                kind = node['kind']
+                if saved_group == None:
+                    group = default_groups.get( kind, 'Ungrouped' )
+                    if group != None:
+                        node['group'] = group
+                        group = parser.new_group( group, node['parent'] )
+                        parser.nodes.append( group )
+                else:
+                    node['group'] = saved_group
+
                 node['cursor_kind'] = str( cursor.kind )
                 parser.nodes.append( node );
                 old_templates = parser.templates
@@ -104,13 +151,27 @@ class Parser:
                     parser.params = node['params']
                 old_parents = parser.parents
                 parser.parents = node['parent']
+                parser.group = None
                 for c in cursor.get_children():
                     parser.parse( c )
                 parser.parents = old_parents
                 parser.templates = old_templates
                 parser.params = old_params
-                if node['kind'] != 'group':
+                if kind == 'group':
+                    parser.group = node['name']
+                else:
                     parser.group = saved_group
+
+    def new_group( parser, name, parent, comments = [] ):
+        result = {
+            'kind': 'group',
+            'name': name,
+            'parent': parent,
+            'link': None,
+            'comments': comments,
+            'children': [],
+        }
+        return result
 
     def add_param( parser, param ):
         if parser.params == None:
@@ -244,7 +305,6 @@ class Parser:
 
     def CLASS_DECL( parser, cursor, is_template = False ):
         comments = parser.gather_comments( cursor )
-        parser.group = None
         result = {
             'kind': 'class',
             'name': cursor.spelling,
@@ -258,7 +318,6 @@ class Parser:
 
     def CLASS_TEMPLATE( parser, cursor ):
         comments = parser.gather_comments( cursor )
-        parser.group = None
         result = {
             'kind': 'class',
             'name': cursor.spelling,
@@ -274,7 +333,6 @@ class Parser:
 
     def STRUCT_DECL( parser, cursor ):
         comments = parser.gather_comments( cursor )
-        parser.group = None
         result = {
             'kind': 'struct',
             'name': cursor.spelling,
@@ -301,16 +359,9 @@ class Parser:
         # Each member is tagged with access already.
         if cursor.raw_comment != None:
             comments = parser.gather_comments( cursor )
-            name = comments[0].lstrip( '/' );
-            name = name.strip();
-            result = {
-                'kind': 'group',
-                'name': name,
-                'parent': parser.get_parent( cursor ),
-                'link': None,
-                'comments': comments[1:],
-                'children': [],
-            }
+            name = comments[0].lstrip( '/' ).strip()
+            parent = parser.get_parent( cursor )
+            result = parser.new_group( name, parent, comments )
             parser.group = name
             return result
         return None
@@ -379,7 +430,6 @@ class Parser:
         return result
 
     def TYPE_REF( parser, cursor ):
-        #print( "TYPE_REF: " + cursor.spelling + ' ' + cursor.type.spelling )
         return None
 
     def PARM_DECL( parser, cursor ):
@@ -482,7 +532,6 @@ class Parser:
         return result
 
     def NAMESPACE_REF( parser, cursor ):
-        #print( "NAMESPACE_REF: " + cursor.spelling )
         return None
 
     def COMPOUND_STMT( parser, cursor ):

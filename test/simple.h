@@ -1,17 +1,24 @@
 
 /// Simple class.
-class Simple
+class SimpleClass
 {
 public:
     /// Simple constructor.
-    Simple( void );
+    SimpleClass( void );
 
     /// Simple destructor.
-    ~Simple( void );
+    ~SimpleClass( void );
 
     /// Simple method.
     int method( double x );
 
+    /// Simple field.
+    int field;
+};
+
+// Simple struct.
+struct SimpleStruct
+{
     /// Simple field.
     int field;
 };

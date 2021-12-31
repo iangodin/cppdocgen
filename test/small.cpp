@@ -1,8 +1,19 @@
 
-/// @brief X and stuff
-int x;
+/// Foo class.
+class Foo
+{
+public:
+    /// Default constructor.
+    Foo( void );
 
-/// @brief Test
-/// @param x X parameter
-/// @param y Y parameter
-void func( int x, int y );
+/// Group
+/// Test group.
+public:
+    /// Variable x
+    int x;
+
+/// Group
+public:
+    /// Variable y
+    int y;
+};

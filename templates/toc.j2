@@ -1,0 +1,18 @@
+
+{%- macro table_of_content( node, title ) %}
+<div class="d-flex flex-column col-2 h-100 px-2 bg-light scrollbar-hidden border border-dark border-1 border-top-0 border-left-0 border-bottom-0">
+{%- if node.kind == 'global' %}
+  <div class="text-black text-center font-weight-bold">{{title}}</div>
+{%- else %}
+  <div class="text-black text-center font-weight-bold">{{title}} {{node.name}}</div>
+{%- endif %}
+{%- for group in node.children %}
+  <div class="badge rounded-pill bg-dark text-white">{{group.name}}</div>
+{%- for n in group.children %}
+    <a class="btn-link text-black my-1" href="{{n.link}}">{{n.name}}</a>
+{%- endfor %}
+{%- endfor %}
+  <div class="my-5"></div>
+</div>
+{%- endmacro %}
+

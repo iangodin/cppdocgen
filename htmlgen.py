@@ -1,5 +1,7 @@
 
 import sqlite3
+import yaml
+from pprint import pprint
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -43,6 +45,12 @@ class HTMLGenerator:
         return nodes
 
     def generate_node( self, node, parents ):
+        for n in node['children']:
+            if node['kind'] == 'group':
+                self.generate_node( n, parents )
+            else:
+                self.generate_node( n, parents + [ node ] )
+
         if node['kind'] in [ 'class', 'struct', 'namespace', 'global' ]:
             filename = self.topdir / Path( *node['link'].split( '/' ) )
             assert '#' not in str( filename ), 'expected class/struct/namespace/global without fragment'
@@ -51,7 +59,4 @@ class HTMLGenerator:
             htmlData = template.render( node=node, parents=parents );
             with filename.open( 'w' ) as f:
                 f.write( htmlData )
-
-        for n in node['children']:
-            self.generate_node( n, parents + [ node ] )
 

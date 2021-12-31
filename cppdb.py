@@ -20,6 +20,9 @@ class CPPDatabase:
                 return
 
         kind = node['kind']
+        if kind == 'group' and len( node['children'] ) == 0:
+            return
+
         name = node['name']
         link = str( node['link'] )
         user = '\n'.join( node['user_doc'] ) if 'user_doc' in node else '<p>Documentation Missing</p>'
