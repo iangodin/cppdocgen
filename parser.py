@@ -3,6 +3,7 @@ from clang.cindex import AccessSpecifier, CursorKind, Cursor
 from pathlib import Path, PosixPath
 from pprint import pprint, pformat
 from functools import reduce
+import re
 import yaml
 
 page_types = [ 'global', 'class', 'struct', 'namespace' ]
@@ -13,9 +14,12 @@ default_groups = {
     'method': 'Methods',
     'field': 'Fields',
     'function': 'Functions',
+    'friend': 'Friend',
+    'variable': 'Variables',
     'type': 'Types',
     'class': 'Types',
     'struct': 'Types',
+    'typedef': 'Types',
     'namespace': 'Namespaces',
     'group': None
 }
@@ -23,13 +27,16 @@ default_groups = {
 group_order = [
     'Namespaces',
     'Types',
-    'Functions',
-    'Variables',
     'Constructors',
     'Destructors',
     'Methods',
     'Fields',
+    'Functions',
+    'Variables',
+    'Friends',
 ]
+
+group_comment = re.compile( r'GROUP[\s]+(.*)' )
 
 def group_key( node ):
     if node['kind'] == 'group':
@@ -197,10 +204,41 @@ class Parser:
                 chain = [ cursor.location.file ]
         return chain
 
-    def gather_comments( parser, node ):
+    def cleanup_comments( parser, lines ):
         result = []
-        if node.raw_comment != None:
-            result = list( map( str.lstrip, node.raw_comment.splitlines() ) )
+        for line in lines:
+            if line == ( len(line) * '/' ):
+                pass
+            elif line.startswith( '///<' ):
+                lines.append( line[4:] )
+            elif line.startswith( '///' ):
+                lines.append( line[3:] )
+            elif line.startswith( '/**<' ):
+                lines = lines + line[4:-2].splitlines()
+            elif line.startswith( '/**' ):
+                lines = lines + line[3:-2].splitlines()
+            elif line.startswith( '/*!<' ):
+                lines = lines + line[3:-2].splitlines()
+            elif line.startswith( '/*!' ):
+                lines = lines + line[3:-2].splitlines()
+            else:
+                assert False, 'unknown comment: ' + c
+            result.append( line )
+
+    def gather_comments( parser, cursor ):
+        result = []
+        if cursor.brief_comment == None:
+            return result
+        comments = cursor.brief_comment.splitlines()
+
+        for line in comments:
+            match = group_comment.match( line )
+            if match:
+                parser.group = match.group( 1 )
+                parser.nodes.append( parser.new_group( match.group( 1 ), parser.get_parent( cursor ), result ) )
+                result = []
+            else:
+                result.append( line )
         return result
 
     def access( parser, cursor ):

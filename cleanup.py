@@ -71,23 +71,8 @@ class Cleanup:
     def cleanup_comments( cleaner, node ):
         lines = []
         if 'comments' in node:
-            for c in node['comments']:
-                if c == len(c) * '/':
-                    pass
-                elif c.startswith( '///<' ):
-                    lines.append( c[4:] )
-                elif c.startswith( '///' ):
-                    lines.append( c[3:] )
-                elif c.startswith( '/**<' ):
-                    lines = lines + c[4:-2].splitlines()
-                elif c.startswith( '/**' ):
-                    lines = lines + c[3:-2].splitlines()
-                elif c.startswith( '/*!<' ):
-                    lines = lines + c[3:-2].splitlines()
-                elif c.startswith( '/*!' ):
-                    lines = lines + c[3:-2].splitlines()
-                else:
-                    assert False, 'unknown comment: ' + c
+            lines = node['comments']
+            pprint( lines )
             lines = cleaner.normalize_spaces( lines )
         return lines
 
@@ -287,7 +272,7 @@ class Cleanup:
     def display_typedef( self, typedef ):
         new_lines = [ r'``` .cpp' ]
 
-        name = self.html_tag( typedef['name'] )
+        name = typedef['name']
         result = self.html_type( typedef['type'] )
         new_lines.append( f'using {name} = {result};' )
 
