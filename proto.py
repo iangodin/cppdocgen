@@ -1,31 +1,16 @@
 #!/usr/bin/env python3
 
+import sys
 import pathlib
-from comments import gather_comments
-from pprint import pprint
+import json
+from comments import gather_comments, FakeCursor
+from pprint import pprint, pformat
 from clang.cindex import Index, Cursor, CursorKind, TokenKind, TranslationUnit, SourceLocation, SourceRange, FileInclusion, File
+from decl_node import decl_node
+from gather_decls import gather_decls
 
 global path_cache
 path_cache = {}
-
-class FakeCursor:
-    def __init__( self, cursor, extent ):
-        self.kind = cursor.kind
-        self.location = extent.start
-        self.spelling = str( self.location.file.name )
-        self.extent = extent
-        self.cursor = cursor
-        pass
-
-    def get_children( self ):
-        return self.cursor.get_children()
-
-def get_diag_info(diag):
-    return { 'severity' : diag.severity,
-             'location' : diag.location,
-             'spelling' : diag.spelling,
-             'ranges' : diag.ranges,
-             'fixits' : diag.fixits }
 
 def path_from_location( location ):
     result = None
@@ -228,6 +213,13 @@ def assign_comments( decls, comments ):
         result[decl] = lst
     return result
 
+def merge( tree, comments ):
+    for key in tree['key']:
+        tree['comments'] += comments.get( key, [] )
+    del tree['key']
+    for c in tree['children']:
+        merge( c, comments )
+
 def main():
     from optparse import OptionParser, OptionGroup
 
@@ -237,6 +229,9 @@ def main():
     parser.add_option("", "--dir", dest="dir",
                       help="Document files inside this directory",
                       metavar="N", type=str, default=".")
+    parser.add_option("", "--pretty", dest="pretty",
+                      help="Pretty print the output JSON",
+                      default=False, action="store_true")
     parser.disable_interspersed_args()
     ( opts, args ) = parser.parse_args()
 
@@ -251,7 +246,9 @@ def main():
     if not tu:
         raise Exception( "unable to load input" )
 
-    pprint(('diags', [get_diag_info(d) for d in  tu.diagnostics]))
+    for diag in tu.diagnostics:
+        print( diag )
+    print( '~~~~~~~~~~' )
 
     def dump_cursor( cursor, indent, force = False ):
         filepath = path_from_location( cursor.location )
@@ -270,9 +267,16 @@ def main():
 
     files = [str( inc.include.name ) for inc in tu.get_includes() if topdir in path_from_include( inc ).parents]
     files.insert( 0, tu.spelling )
+
     cmts = gather_comments( tu, files )
-    for item in cmts.items():
-        pprint( item )
+
+    output = pathlib.Path( 'cppinfo.json' )
+
+    with output.open( 'w' ) as f:
+        if opts.pretty:
+            f.write( json.dumps( cmts, indent=2 ) )
+        else:
+            f.write( json.dumps( cmts ) )
 
 if __name__ == '__main__':
     main()

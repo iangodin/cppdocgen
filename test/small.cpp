@@ -1,19 +1,18 @@
 
-/// Foo class.
-class Foo
+/// Struct
+template<typename T1>
+struct T
 {
-public:
-    /// Default constructor.
-    Foo( void );
+    /// Constructor
+    T( int y );
 
-/// Group
-/// Test group.
-public:
-    /// Variable x
-    int x;
-
-/// Group
-public:
-    /// Variable y
-    int y;
+    /// Int type
+    int T2;
 };
+
+
+/// More
+template<typename T1>
+T<T1>::T( int y )
+{
+}
