@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
 import pathlib
+import re
 from pprint import pprint
-from decl_node import sem_parent_list, decl_node
+from decl_node import sem_parent_list, decl_node, decl_location
 from clang.cindex import Index, Cursor, CursorKind, TokenKind, TranslationUnit, SourceLocation, SourceRange, FileInclusion, File, Token, AccessSpecifier
 
 Cursor.__hash__ = lambda c: c.hash
@@ -54,20 +55,42 @@ def sem_parent( cursor ):
             return '::' + '::'.join( sem_parent_list( cursor )[:-1] )
 
 kind_sep = {
-    CursorKind.TEMPLATE_TYPE_PARAMETER: '<>',
-    CursorKind.TEMPLATE_NON_TYPE_PARAMETER: '<>',
-    CursorKind.PARM_DECL: '()',
+    TokenKind.COMMENT: '#',
+    CursorKind.TEMPLATE_TYPE_PARAMETER: '?',
+    CursorKind.TEMPLATE_NON_TYPE_PARAMETER: '?',
+    CursorKind.TEMPLATE_NON_TYPE_PARAMETER: '?',
+    CursorKind.CONSTRUCTOR: '#',
+    CursorKind.DESTRUCTOR: '#',
+    CursorKind.CXX_ACCESS_SPEC_DECL: '?',
+    CursorKind.FIELD_DECL: '#',
+    CursorKind.CXX_METHOD: '#',
+    CursorKind.FUNCTION_TEMPLATE: '#',
+    CursorKind.FUNCTION_DECL: '#',
+    CursorKind.VAR_DECL: '#',
+    CursorKind.PARM_DECL: '?',
 }
 
+def self_name( cursor ):
+    if cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
+        a = cursor.access_specifier
+        if a == AccessSpecifier.PUBLIC:
+            return 'public'
+        if a == AccessSpecifier.PROTECTED:
+            return 'protected'
+        if a == AccessSpecifier.PRIVATE:
+            return 'private'
+        return 'unknown'
+    else:
+        return cursor.spelling
+
 def sem_name( cursor ):
-    if isinstance( cursor, FakeToken ):
-        return sem_name( cursor.sem_parent ) + '!!' + cursor.spelling
-    elif isinstance( cursor, Cursor ) or isinstance( cursor, FakeCursor ):
+    if isinstance( cursor, FakeToken ) or isinstance( cursor, Cursor ) or isinstance( cursor, FakeCursor ):
         if cursor.kind == CursorKind.TRANSLATION_UNIT:
             return ''
         else:
-            sep = kind_sep.get( cursor.kind, '::' )
-            return sem_name( cursor.semantic_parent ) + sep + cursor.spelling
+            sep = kind_sep.get( cursor.kind, '/' )
+            parent = sem_name( cursor.semantic_parent )
+            return parent + sep + self_name( cursor )
     else:
         assert not cursor, 'unknown cursor type ' + str( type( cursor ) )
         return ''
@@ -179,9 +202,45 @@ def create_decls( cursor, topfile, extent ):
             lst += create_decls( c, topfile, extent )
     return lst
 
-def group_name( comment ):
-    lines = comment[5:].strip().splitlines()
-    return ( lines[0], lines[1:] )
+c_comment_start = re.compile( r'/[*]+([!]?[!<]?)(.*)' )
+c_comment_cont = re.compile( r'[\s]*[*](.*)' )
+cpp_comment = re.compile( r'//[/]?([!]?[!<]?)(.*)' )
+
+def clean_c_comment( comment ):
+    lines = comment.splitlines()
+    tag = ''
+    for ( i, line ) in lines.enumerate():
+        if i == 0:
+            match = c_comment_start.match( line )
+            if match:
+                tag = match.group( 1 )
+                line = match.group( 2 )
+            else:
+                assert False, 'unknown C comment: ' + line
+        else:
+            match = c_comment_cont.match( line )
+            if match:
+                line = match.group( 1 )
+        lines[i] = line
+    return ( tag, lines )
+
+def clean_cpp_comment( comment ):
+    match = cpp_comment.match( comment )
+    assert match, 'unknown C++ comment: ' + line
+    tag = match.group( 1 )
+    comment = match.group( 2 )
+    return ( tag, [ comment ] )
+
+def cleanup_comment( comment ):
+    if comment.startswith( r'//' ):
+        return clean_cpp_comment( comment )
+    else:
+        return clean_c_comment( comment )
+    
+
+def group_name( line ):
+    name = line.strip()
+    return name
 
 def create_comments( tokens, topfile ):
     comments = []
@@ -190,13 +249,14 @@ def create_comments( tokens, topfile ):
         if tok.kind == TokenKind.COMMENT:
             if tok.location.file != None and str( tok.location.file ) != topfile:
                 continue
-            if tok.spelling.startswith( '///!!' ) or tok.spelling.startswith( '/**!!' ):
-                ( name, cmts ) = group_name( tok.spelling )
+            tag, cmts = cleanup_comment( tok.spelling )
+            if tag == '!!':
+                name = group_name( cmts[0] )
                 groups.append( FakeToken( name, None, tok.extent ) )
-                if len( cmts ) > 0:
-                    comments.append( ( '\n'.join( cmts ), tok.location.offset ) )
+                if len( cmts ) > 1:
+                    comments.append( ( '!<', '\n'.join( cmts[1:] ), tok.location.offset ) )
             else:
-                comments.append( ( tok.spelling, tok.location.offset ) )
+                comments.append( ( tag, '\n'.join( cmts ), tok.location.offset ) )
     return ( comments, groups )
 
 # Check if a contains b
@@ -272,9 +332,9 @@ def find_preceding_decl( parent, decls, loc ):
 def assign_comments( decls, comments ):
     result = {}
     top = decls[0][0]
-    for ( cmt, loc ) in comments:
+    for ( tag, cmt, loc ) in comments:
         decl = top
-        if cmt.startswith( '//!<' ) or cmt.startswith( '///<' ) or cmt.startswith( '/*!<' ) or cmt.startswith( '/**<' ):
+        if tag == '!<' or tag == '<':
             decl = find_preceding_decl( top, decls, loc )
         else:
             decl = find_following_decl( top, decls, loc )
@@ -283,21 +343,6 @@ def assign_comments( decls, comments ):
         lst.append( cmt )
         result[key] = lst
     return result
-
-def gather_parents( tree, parents = {}, parent = '' ):
-    group = None
-    for ( cursor, children ) in tree:
-        if group:
-            parents[cursor.canonical] = group
-        else:
-            parents[cursor.canonical] = parent
-        if isinstance( cursor, FakeToken ):
-            group = parent + '!!' + cursor.spelling
-        if cursor.kind == CursorKind.TRANSLATION_UNIT:
-            gather_parents( children, parents, '' )
-        else:
-            gather_parents( children, parents, parent + '::' + cursor.spelling )
-    return parents
 
 def merge( master, more ):
     for ( name, comments ) in more.items():
@@ -370,30 +415,28 @@ def gather_comments( tu, files ):
         #    pprint( item )
         #print( '----------' )
 
-        # Dictionary of node -> parent
-        parents = parents | gather_parents( tree )
-        #print( 'PARENTS' )
-        #for ( node, parent ) in parents.items():
-        #    pprint( ( node.spelling, parent ) )
-        #print( '----------' )
-
         # Added any missing declarations with empty comment list.
         # This way all declarations will be present, even if they are not commented.
         for d in decl_list:
             if d not in decl_cmts:
                 decl_cmts[d] = []
+        #print( "DECL_CMTS + uncommented" )
+        #for item in decl_cmts.items():
+        #    pprint( item )
+        #print( '----------' )
 
         # Finally add all of the decl_cmts into the final list
         for ( cursor, comments ) in decl_cmts.items():
             assert cursor.canonical, "missing canonical " + str( cursor )
             canon = cursor.canonical
             name = sem_name( canon )
-            if canon.kind != CursorKind.TRANSLATION_UNIT:
-                if canon not in decl_cmts_list:
+            if canon.kind != CursorKind.TRANSLATION_UNIT and canon.kind != CursorKind.CXX_ACCESS_SPEC_DECL:
+                if name not in decl_cmts_list:
                     node = decl_node( canon )
                     node['parent'] = sem_name( canon.semantic_parent )
                     decl_cmts_list[name] = node
                 decl_cmts_list[name]['comments'] += comments
+                decl_cmts_list[name]['location'] += decl_location( cursor )
 
     print( "DECL_CMTS_LIST" )
     for item in decl_cmts_list.items():

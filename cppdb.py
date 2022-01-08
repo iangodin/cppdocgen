@@ -5,30 +5,34 @@ class CPPDatabase:
     def __init__( self, dbfile ):
         self.connection = sqlite3.connect( dbfile )
         self.cursor = self.connection.cursor()
-        self.create_table()
+        self.create_tables()
 
     def close( self ):
         self.connection.commit()
         self.connection.close()
 
-    def create_table( self ):
-        self.cursor.execute( 'CREATE TABLE IF NOT EXISTS nodes ( id INTEGER PRIMARY KEY, parent_id INTEGER, kind VARCHAR(64), name VARCHAR(64), link VARCHAR(64), user TEXT, auto TEXT );' )
+    def create_tables( self ):
+        self.cursor.execute( '''CREATE TABLE IF NOT EXISTS nodes (
+                name VARCHAR(64),
+                link VARCHAR(64),
+                parent VARCHAR(64),
+                kind VARCHAR(64),
+                decl TEXT,
+                comments TEXT
+            );''' )
 
-    def write( self, node, parent_id = 0 ):
-        if node.get( 'access', 'public' ) == 'private':
-            if len( node['user_doc'] ) == 0:
-                return
+    def insert_records( self, nodes ):
+        for ( link, node ) in nodes.items():
+            if node.get( 'access', 'public' ) == 'private':
+                if len( node['comments'] ) == 0:
+                    return
+            name = node['name']
+            parent = node['parent']
+            kind = node['kind']
+            decl = node['decl']
+            cmts = '\n'.join( node['comments'] )
 
-        kind = node['kind']
-        if kind == 'group' and len( node['children'] ) == 0:
-            return
-
-        name = node['name']
-        link = str( node['link'] )
-        user = '\n'.join( node['user_doc'] ) if 'user_doc' in node else '<p>Documentation Missing</p>'
-        auto = '\n'.join( node['auto_doc'] ) if 'auto_doc' in node else '<p>Documentation Missing</p>'
-        self.cursor.execute( f'INSERT OR FAIL INTO nodes ( parent_id, kind, name, link, user, auto ) VALUES ( ?, ?, ?, ?, ?, ? );', ( parent_id, kind, name, link, user, auto ) )
-        newid = self.cursor.lastrowid
-        if 'children' in node:
-            for n in node['children']:
-                self.write( n, newid )
+            self.cursor.execute(
+                'INSERT OR FAIL INTO nodes ( name, link, parent, kind, decl, comments ) ' +
+                    'VALUES ( ?, ?, ?, ?, ?, ? );',
+                    ( name, link, parent, kind, decl, cmts ) )

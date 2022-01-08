@@ -1,15 +1,40 @@
 #!/usr/bin/env python3
 
-import sys
 import pathlib
-import json
-from comments import gather_comments, FakeCursor
-from pprint import pprint, pformat
+from pprint import pprint
 from clang.cindex import Index, Cursor, CursorKind, TokenKind, TranslationUnit, SourceLocation, SourceRange, FileInclusion, File
-from cppdb import CPPDatabase
+
+Cursor.__hash__ = lambda c: c.hash
 
 global path_cache
 path_cache = {}
+
+class FakeToken:
+    def __init__( self, spelling ):
+        self.kind = TokenKind.IDENTIFIER
+        self.spelling = spelling
+
+class FakeCursor:
+    def __init__( self, cursor, extent ):
+        self.kind = cursor.kind
+        self.location = extent.start
+        self.spelling = str( self.location.file.name )
+        self.extent = extent
+        self.cursor = cursor
+        pass
+
+    def get_children( self ):
+        return self.cursor.get_children()
+
+    def get_tokens( self ):
+        return [ FakeToken( self.spelling ) ]
+
+def get_diag_info(diag):
+    return { 'severity' : diag.severity,
+             'location' : diag.location,
+             'spelling' : diag.spelling,
+             'ranges' : diag.ranges,
+             'fixits' : diag.fixits }
 
 def path_from_location( location ):
     result = None
@@ -57,48 +82,22 @@ def path_from_include( include ):
             path_cache[filename] = result
     return result
 
-def lex_parent_list( cursor ):
-    result = []
-    if not isinstance( cursor, Cursor ):
-        return result
-    if cursor.kind == CursorKind.TRANSLATION_UNIT:
-        return []
-    if isinstance( cursor.lexical_parent, Cursor ):
-        result = lex_parent_list( cursor.lexical_parent )
-
-    name = cursor.spelling
-    if cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
-        name = next( cursor.get_tokens() ).spelling
-    elif cursor.kind == CursorKind.COMPOUND_STMT:
-        name = '{}'
-    result.append( ( cursor.kind.is_declaration(), name ) )
-    return result
-
-def lex_parent( cursor ):
-    result = ''
-    for p in lex_parent_list( cursor ):
-        #if p[0] == False:
-        #    break
-        if len( result ) > 0:
-            result = result + '::' + p[1]
-        else:
-            result = p[1]
-    return result
-
 decl_kinds = [
     CursorKind.NAMESPACE,
     CursorKind.CLASS_DECL,
+    CursorKind.CLASS_TEMPLATE,
     CursorKind.STRUCT_DECL,
     CursorKind.UNION_DECL,
     CursorKind.ENUM_DECL,
-    CursorKind.COMPOUND_STMT,
     CursorKind.CXX_METHOD,
     CursorKind.CONSTRUCTOR,
     CursorKind.DESTRUCTOR,
     CursorKind.FIELD_DECL,
     CursorKind.PARM_DECL,
+    CursorKind.TEMPLATE_TYPE_PARAMETER,
     CursorKind.ENUM_CONSTANT_DECL,
     CursorKind.FUNCTION_DECL,
+    CursorKind.FUNCTION_TEMPLATE,
     CursorKind.VAR_DECL,
     CursorKind.CXX_ACCESS_SPEC_DECL,
     CursorKind.TRANSLATION_UNIT,
@@ -111,6 +110,8 @@ decl_skip_children = [
 
 ignore_kinds = [
     CursorKind.TYPE_REF,
+    CursorKind.NAMESPACE_REF,
+    CursorKind.COMPOUND_STMT,
 ]
 
 def create_decls( cursor, topfile, extent ):
@@ -181,7 +182,7 @@ def range_contains_loc( rng, loc ):
 
 def find_following_decl( parent, decls, loc ):
     for ( cursor, children ) in decls:
-        name = lex_parent( cursor )
+        name = cursor
         rng = ( cursor.extent.start.offset, cursor.extent.end.offset )
         if loc < rng[0]:
             return name
@@ -191,7 +192,7 @@ def find_following_decl( parent, decls, loc ):
 
 def find_preceding_decl( parent, decls, loc ):
     for ( cursor, children ) in reversed( decls ):
-        name = lex_parent( cursor )
+        name = cursor
         rng = ( cursor.extent.start.offset, cursor.extent.end.offset )
         if loc > rng[1]:
             return name
@@ -203,84 +204,56 @@ def assign_comments( decls, comments ):
     result = {}
     top = decls[0][0]
     for ( cmt, loc ) in comments:
+        decl = top
         if cmt.startswith( '//!<' ) or cmt.startswith( '///<' ) or cmt.startswith( '/*!<' ) or cmt.startswith( '/**<' ):
             decl = find_preceding_decl( top, decls, loc )
         else:
             decl = find_following_decl( top, decls, loc )
-        lst = result.get( decl, [] )
+        key = decl
+        lst = result.get( key, [] )
         lst.append( cmt )
-        result[decl] = lst
+        result[key] = lst
     return result
 
-def merge( tree, comments ):
-    for key in tree['key']:
-        tree['comments'] += comments.get( key, [] )
-    del tree['key']
-    for c in tree['children']:
-        merge( c, comments )
+def merge( master, more ):
+    for ( name, comments ) in more.items():
+        cmts = master.get( name, [] )
+        cmts += comments
+        master[name] = cmts
 
-def main():
-    from optparse import OptionParser, OptionGroup
+def dump_tree( tree, indent = 0 ):
+    tabs = '  ' * indent
+    for ( cursor, children ) in tree:
+        ext = ( cursor.extent.start.offset, cursor.extent.end.offset )
+        print( tabs + cursor.kind.name + ' ' + str( ext ) )
+        dump_tree( children, indent + 1 )
 
-    global opts
+def dump_decl( decl ):
+    ext = ( decl.extent.start.offset, decl.extent.end.offset )
+    pprint( ( decl.spelling, ext ) )
 
-    parser = OptionParser("usage: %prog [options] {filename} [clang-args*]")
-    parser.add_option("", "--dir", dest="dir",
-                      help="Document files inside this directory",
-                      metavar="N", type=str, default=".")
-    parser.add_option("", "--pretty", dest="pretty",
-                      help="Pretty print the output JSON",
-                      default=False, action="store_true")
-    parser.disable_interspersed_args()
-    ( opts, args ) = parser.parse_args()
+def gather_comments( tu, files ):
+    cmts = {}
+    for filename in files:
+        file_extent = get_file_extent( tu, File.from_name( tu, filename ) )
+        decl_list = create_decls( tu.cursor, filename, file_extent )
+        merge( cmts, { d: [] for d in decl_list } )
+        #for item in decl_list:
+        #    dump_decl( item )
+        #print( '----------' )
 
-    if len(args) == 0:
-        parser.error('invalid number arguments')
+        tokens = tu.get_tokens( extent = file_extent )
+        comments = create_comments( tokens, filename )
+        #for c in comments:
+        #    pprint( c )
+        #print( '----------' )
 
-    filename, *clang_args = args
-    topdir = pathlib.Path( opts.dir ).resolve()
+        tree = create_decl_tree( decl_list )
+        #dump_tree( tree )
+        #print( '----------' )
 
-    index = Index.create()
-    tu = index.parse( filename, clang_args ) #, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
-    if not tu:
-        raise Exception( "unable to load input" )
+        result = assign_comments( tree, comments )
 
-    for diag in tu.diagnostics:
-        print( diag )
-    print( '~~~~~~~~~~' )
-
-    def dump_cursor( cursor, indent, force = False ):
-        filepath = path_from_location( cursor.location )
-        if not force:
-            if filepath:
-                if topdir not in filepath.parents:
-                    return
-            else:
-                return
-        tabs = '  ' * indent
-        print( tabs + cursor.kind.name + ' ' + cursor.spelling + ' ' + str( cursor.extent.start.offset ) + ' - ' + str( cursor.extent.end.offset ) )
-        if cursor.kind not in decl_skip_children:
-            for c in cursor.get_children():
-                dump_cursor( c, indent + 1 )
-    #dump_cursor( tu.cursor, 0, True )
-
-    files = [str( inc.include.name ) for inc in tu.get_includes() if topdir in path_from_include( inc ).parents]
-    files.insert( 0, tu.spelling )
-
-    cmts = gather_comments( tu, files )
-
-    db = CPPDatabase( 'cppinfo.db' )
-    db.insert_records( cmts )
-    db.close()
-
-#    output = pathlib.Path( 'cppinfo.json' )
-#
-#    with output.open( 'w' ) as f:
-#        if opts.pretty:
-#            f.write( json.dumps( cmts, indent=2 ) )
-#        else:
-#            f.write( json.dumps( cmts ) )
-
-if __name__ == '__main__':
-    main()
+        merge( cmts, result )
+    return cmts
 
