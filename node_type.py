@@ -13,6 +13,7 @@ mapping_cursor = {
     CursorKind.FIELD_DECL: 'field',
     CursorKind.VAR_DECL: 'variable',
     CursorKind.PARM_DECL: 'param',
+    CursorKind.TYPE_ALIAS_DECL: 'typedef',
     CursorKind.TEMPLATE_TYPE_PARAMETER: 'tparam',
     CursorKind.FUNCTION_TEMPLATE: 'function',
     CursorKind.FUNCTION_DECL: 'function',

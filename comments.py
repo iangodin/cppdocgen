@@ -171,6 +171,7 @@ decl_kinds = [
     CursorKind.PARM_DECL,
     CursorKind.TEMPLATE_TYPE_PARAMETER,
     CursorKind.ENUM_CONSTANT_DECL,
+    CursorKind.TYPE_ALIAS_DECL,
     CursorKind.FUNCTION_DECL,
     CursorKind.FUNCTION_TEMPLATE,
     CursorKind.VAR_DECL,
@@ -208,7 +209,7 @@ def create_decls( cursor, topfile, extent, parent = None ):
     elif k.is_expression():
         pass
     else:
-        print( "NOT A DECL?!? " + cursor.kind.name + ' (' + cursor.spelling + ')' )
+        print( "UNKNOWN KIND: " + cursor.kind.name + ' (' + cursor.spelling + ')' )
 
     if cursor.kind not in decl_skip_children:
         for c in cursor.get_children():
@@ -571,9 +572,9 @@ def gather_comments( tu, files ):
         # Finally add all of the decl_cmts2 into the final list
         merge_decl_tree( decl_cmts_list, decl_cmts )
 
-    print( "DECL_CMTS_LIST" )
-    pprint( decl_cmts_list, sort_dicts=False )
-    print( '----------' )
+    #print( "DECL_CMTS_LIST" )
+    #pprint( decl_cmts_list, sort_dicts=False )
+    #print( '----------' )
 
     return decl_cmts_list
 
