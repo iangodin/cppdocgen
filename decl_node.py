@@ -27,9 +27,9 @@ def decl_location( cursor ):
     loc = ( cursor.location.file.name, cursor.location.line, cursor.location.column )
     return [ loc ]
 
-def decl_node( key, cursor ):
+def decl_node( key, name, cursor ):
     node = {
-        'name': cursor.spelling,
+        'name': name,
         'key': key,
         'kind': cursor_to_type( cursor ),
         'link': '',
@@ -47,7 +47,7 @@ def decl_node( key, cursor ):
         node['decl'] = ''
         node['display'] = 'global'
     elif cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
-        node['name'] = 'public'
+        node['decl'] = ''
     if node['type'] == None:
         del node['type']
     if node['access'] == None:

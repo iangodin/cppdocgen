@@ -8,11 +8,14 @@
   {%- endif %}
   <hr class="border-dark opacity-100">
 <div class="wh-100 px-3 scrollbar-hidden">
-  {{- node.auto }}
-  {{- node.user }}
+  {%- if node.decl %}
+  <pre class="highlight"><code class="language-cpp hljs">{{- node.decl }};</code></pre>
+  {%- endif %}
+  {{- node.comments }}
   {%- for group in node.children %}
     <section class="group">
     <h2 class="badge rounded-pill bg-dark text-white w-100">{{group.name}}</h2>
+    {{- group.comments }}
     {%- for n in group.children %}
       <section class="member px-2">
         {%- set aid = anchor( n ) %}

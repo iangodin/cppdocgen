@@ -36,7 +36,7 @@ class CPPDatabase:
                 link = link + '.html'
             if node.get( 'access', 'public' ) == 'private':
                 if len( node['comments'] ) == 0:
-                    return
+                    continue
             name = node['name']
             parent = '/'.join( node['key'][:-1] )
             key = '/'.join( node['key'] )

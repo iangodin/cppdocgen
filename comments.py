@@ -72,11 +72,11 @@ def self_name( cursor ):
     elif cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
         a = cursor.access_specifier
         if a == AccessSpecifier.PUBLIC:
-            return 'public'
+            return 'Public'
         if a == AccessSpecifier.PROTECTED:
-            return 'protected'
+            return 'Protected'
         if a == AccessSpecifier.PRIVATE:
-            return 'private'
+            return 'Private'
         return 'unknown'
     else:
         return cursor.spelling
@@ -184,6 +184,7 @@ decl_skip_children = [
 ]
 
 ignore_kinds = [
+    CursorKind.MEMBER_REF,
     CursorKind.TEMPLATE_REF,
     CursorKind.TYPE_REF,
     CursorKind.NAMESPACE_REF,
@@ -204,8 +205,10 @@ def create_decls( cursor, topfile, extent, parent = None ):
         lst.append( cursor )
     elif k in ignore_kinds:
         pass
+    elif k.is_expression():
+        pass
     else:
-        print( "NOT A DECL?!? " + cursor.kind.name )
+        print( "NOT A DECL?!? " + cursor.kind.name + ' (' + cursor.spelling + ')' )
 
     if cursor.kind not in decl_skip_children:
         for c in cursor.get_children():
@@ -214,7 +217,7 @@ def create_decls( cursor, topfile, extent, parent = None ):
 
 c_comment_start = re.compile( r'/[*]+([!]?[!<]?)(.*)' )
 c_comment_cont = re.compile( r'[\s]*[*](.*)' )
-cpp_comment = re.compile( r'//[/]?([!]?[!<]?)(.*)' )
+cpp_comment = re.compile( r'//[/]*([!]?[!<]?)(.*)' )
 
 def clean_c_comment( comment ):
     lines = comment.splitlines()
@@ -311,7 +314,7 @@ def create_decl_tree( decls ):
     assign_parent_to_groups( lst, None )
     return lst
 
-def group_globals( decls, parent ):
+def group_namespace( decls, parent ):
     typegroup = []
     funcgroup = []
     vargroup = []
@@ -369,6 +372,11 @@ def group_class( decls, parent ):
                 newchildren.append( ( group_cursor, group ) )
             group = []
             group_cursor = cursor
+        elif ty == 'access':
+            if group:
+                newchildren.append( ( group_cursor, group ) )
+            group = []
+            group_cursor = cursor
         else:
             othergroup.append( ( cursor, group_childrens( children, cursor ) ) )
 
@@ -399,7 +407,9 @@ def group_other( decls, parent ):
 def group_childrens( decls, parent = None ):
     if parent:
         if parent.kind == CursorKind.TRANSLATION_UNIT:
-            return group_globals( decls, parent )
+            return group_namespace( decls, parent )
+        elif parent.kind == CursorKind.NAMESPACE:
+            return group_namespace( decls, parent )
         elif parent.kind == CursorKind.CLASS_DECL:
             return group_class( decls, parent )
         elif parent.kind == CursorKind.STRUCT_DECL:
@@ -435,18 +445,19 @@ def find_preceding_decl( parent, decls, loc ):
             return find_preceding_decl( name, children, loc )
     return parent
 
-def assign_comments2( decls, comments, parent = { 'key': [], 'link': '' } ):
+def convert_to_nodes( decls, comments, parent = { 'key': [], 'link': '' } ):
     result = []
     for ( cursor, children ) in decls:
         parent_link = parent['link']
         name = self_name( cursor )
         key = parent['key'] + [ name ]
-        node = decl_node( key, cursor.canonical )
-        node['link'] = link_url( parent_link, node )
-        if cursor in comments:
-            node['comments'] += comments[cursor]
-        node['children'] = assign_comments2( children, comments, node )
-        result.append( node )
+        node = decl_node( key, name, cursor.canonical )
+        if node:
+            node['link'] = link_url( parent_link, node )
+            if cursor in comments:
+                node['comments'] += comments[cursor]
+            node['children'] = convert_to_nodes( children, comments, node )
+            result.append( node )
     return result
 
 def assign_comments( decls, comments ):
@@ -532,56 +543,33 @@ def gather_comments( tu, files ):
         # Create a tree of declarations (including groups).
         # The tree is created from the extents of each declaration/group.
         tree = create_decl_tree( decl_list )
-        print( "DECL_TREE" )
-        dump_tree( tree )
-        print( '----------' )
+        #print( "DECL_TREE" )
+        #dump_tree( tree )
+        #print( '----------' )
 
         # Assign comments to declarations
         # This is done based on the extent of the decls/groups and the location of comments.
         # decl_cmts is a dictionary of cursor/token -> list of comments
         # A cursor means a declaration, a token for groups.
         decl_cmts = assign_comments( tree, comments )
-        print( "DECL_CMTS" )
-        for item in decl_cmts.items():
-            pprint( ( sem_name( item[0] ), item[1] ) )
-        print( '----------' )
-
-        tree = group_childrens( tree )
-        print( "DECL_TREE GROUPED" )
-        dump_tree( tree )
-        print( '----------' )
-
-        # Assign comments to declarations
-        decl_cmts = assign_comments2( tree, decl_cmts )
-        print( "DECL_CMTS2" )
-        pprint( decl_cmts, sort_dicts=False )
-        print( '----------' )
-
-        # Added any missing declarations with empty comment list.
-        # This way all declarations will be present, even if they are not commented.
-        #for d in decl_list:
-        #    if d not in decl_cmts:
-        #        decl_cmts[d] = []
-        #print( "DECL_CMTS + uncommented" )
+        #print( "DECL_CMTS" )
         #for item in decl_cmts.items():
         #    pprint( ( sem_name( item[0] ), item[1] ) )
         #print( '----------' )
 
+        tree = group_childrens( tree )
+        #print( "DECL_TREE GROUPED" )
+        #dump_tree( tree )
+        #print( '----------' )
+
+        # Assign comments to declarations
+        decl_cmts = convert_to_nodes( tree, decl_cmts )
+        #print( "DECL_CMTS as NODES" )
+        #pprint( decl_cmts, sort_dicts=False )
+        #print( '----------' )
+
         # Finally add all of the decl_cmts2 into the final list
-        print( "MERGE!!!!!!!!!!!!!!!!!!!!!!!!" )
         merge_decl_tree( decl_cmts_list, decl_cmts )
-        # Finally add all of the decl_cmts into the final list
-        #for ( cursor, comments ) in decl_cmts.items():
-        #    assert cursor.canonical, "missing canonical " + str( cursor )
-        #    canon = cursor.canonical
-        #    name = sem_name( canon )
-        #    if canon.kind != CursorKind.TRANSLATION_UNIT and canon.kind != CursorKind.CXX_ACCESS_SPEC_DECL:
-        #        if name not in decl_cmts_list:
-        #            node = decl_node( sem_name( canon ), canon )
-        #            node['parent'] = sem_name( canon.semantic_parent )
-        #            decl_cmts_list[name] = node
-        #        decl_cmts_list[name]['comments'] += comments
-        #        decl_cmts_list[name]['location'] += decl_location( cursor )
 
     print( "DECL_CMTS_LIST" )
     pprint( decl_cmts_list, sort_dicts=False )

@@ -12,7 +12,6 @@ doxy_brief = re.compile( r'[\s]*@brief(.*)' )
 doxy_param = re.compile( r'[\s]*@param[\s]+([\w]+)[\s]*(.*)' )
 
 def doxy_filter( lines ):
-    pprint( ( "DOXY", lines ) )
     found_param = False
     result = []
     for line in lines:
@@ -61,7 +60,7 @@ class Cleanup:
         doxy = doxy_filter( clean )
         mdown = cleaner.convert_to_markdown( doxy )
         mdhtml = cleaner.md.convert( '\n'.join( mdown ) )
-        pprint( ( cmts, clean, doxy, mdown, mdhtml ) )
+        #pprint( ( cmts, clean, doxy, mdown, mdhtml ) )
         return mdhtml
 
         #display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )

@@ -7,7 +7,7 @@ mapping_cursor = {
     CursorKind.CLASS_DECL: 'class',
     CursorKind.CLASS_TEMPLATE: 'class',
     CursorKind.STRUCT_DECL: 'struct',
-    CursorKind.CXX_ACCESS_SPEC_DECL: 'access',
+    CursorKind.CXX_ACCESS_SPEC_DECL: 'group',
     CursorKind.CONSTRUCTOR: 'constructor',
     CursorKind.DESTRUCTOR: 'destructor',
     CursorKind.FIELD_DECL: 'field',

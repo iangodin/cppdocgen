@@ -44,7 +44,7 @@ class HTMLGenerator:
             'link': '/index.html',
             'kind': 'global',
             'decl': '',
-            'comments': [],
+            'comments': '',
             'children': self.load_nodes(),
         }
         #pprint( top, sort_dicts=False )
