@@ -1,7 +1,8 @@
 
-from clang.cindex import Cursor, CursorKind, TypeKind
+from clang.cindex import Cursor, CursorKind, TypeKind, TokenKind
 
 mapping_cursor = {
+    TokenKind.COMMENT: 'group',
     CursorKind.CXX_METHOD: 'method',
     CursorKind.CLASS_DECL: 'class',
     CursorKind.CLASS_TEMPLATE: 'class',
@@ -16,6 +17,7 @@ mapping_cursor = {
     CursorKind.FUNCTION_TEMPLATE: 'function',
     CursorKind.FUNCTION_DECL: 'function',
     CursorKind.NAMESPACE: 'namespace',
+    CursorKind.TRANSLATION_UNIT: 'global',
 }
 
 def cursor_to_type( cursor ):

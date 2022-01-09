@@ -27,21 +27,27 @@ def decl_location( cursor ):
     loc = ( cursor.location.file.name, cursor.location.line, cursor.location.column )
     return [ loc ]
 
-def decl_node( cursor ):
+def decl_node( key, cursor ):
     node = {
         'name': cursor.spelling,
+        'key': key,
         'kind': cursor_to_type( cursor ),
+        'link': '',
         'location': [],
         'type': type_node( cursor.type ),
         'result': type_node( cursor.result_type ),
         'access': access_name( cursor.access_specifier ),
         'decl': get_decl( cursor ),
         'display': str( cursor.displayname ),
-        'children': [],
         'comments': [],
+        'children': [],
     }
-    if cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
-        node['name'] = 'public';
+    if cursor.kind == CursorKind.TRANSLATION_UNIT:
+        node['name'] = ''
+        node['decl'] = ''
+        node['display'] = 'global'
+    elif cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
+        node['name'] = 'public'
     if node['type'] == None:
         del node['type']
     if node['access'] == None:

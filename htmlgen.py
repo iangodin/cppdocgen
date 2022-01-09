@@ -5,6 +5,14 @@ from pprint import pprint
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+def html_file( node ):
+    link = node['link']
+    assert '#' not in link, 'not an html file ' + link
+    if link == '':
+        return Path( 'index.html' )
+    else:
+        return Path( *(link.split( '/' )) )
+
 def filter_kind( nodes, kind ):
     if isinstance( kind, str ):
         return filter( lambda n: kind == '' or n['kind'] == kind, nodes )
@@ -30,17 +38,24 @@ class HTMLGenerator:
         self.env.globals['anchor'] = anchor
 
     def generate( self ):
-        tops = self.load_nodes()
-        assert len( tops ) == 1, 'expect only one global node'
-        tops[0]['name'] = ''
-        self.generate_node( tops[0], [] )
+        top = {
+            'name': '',
+            'link': '/index.html',
+            'kind': 'global',
+            'decl': '',
+            'comments': [],
+            'children': self.load_nodes(),
+        }
+        pprint( top, sort_dicts=False )
+        print( yaml.dump( top, sort_keys=False ) )
+        self.generate_node( top, [] )
 
-    def load_nodes( self, parent_id = 0 ):
-        rows = self.cursor.execute( f'SELECT id, name, kind, link, user, auto FROM nodes WHERE parent_id={parent_id} ORDER BY id;' ).fetchall();
+    def load_nodes( self, parent = '' ):
+        rows = self.cursor.execute( f'SELECT name, key, link, kind, decl, comments FROM nodes WHERE parent="{parent}";' ).fetchall();
         nodes = []
         for row in rows:
-            child = { 'id': row[0], 'name': row[1], 'kind': row[2], 'link': row[3], 'user': row[4], 'auto': row[5] }
-            child['children'] = self.load_nodes( child['id'] )
+            child = { 'name': row[0], 'key': row[1], 'link': row[2], 'kind': row[3], 'decl': row[4], 'comments': row[5].splitlines() }
+            child['children'] = self.load_nodes( child['key'] )
             nodes.append( child )
         return nodes
 
@@ -52,7 +67,8 @@ class HTMLGenerator:
                 self.generate_node( n, parents + [ node ] )
 
         if node['kind'] in [ 'class', 'struct', 'namespace', 'global' ]:
-            filename = self.topdir / Path( *node['link'].split( '/' ) )
+            filename = self.topdir / html_file( node )
+            pprint( ( "GENERATING", filename ) )
             assert '#' not in str( filename ), 'expected class/struct/namespace/global without fragment'
             filename.parent.mkdir( parents = True, exist_ok = True )
             template = self.env.get_template( node['kind'] + ".html" )

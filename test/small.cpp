@@ -1,18 +1,26 @@
 
-/// Struct
-template<typename T1>
-struct T
+/// Struct Thing
+struct Thing
 {
-    /// Constructor
-    T( int y );
+    /// The fields.
+    ///!! Fields
 
-    /// Int type
-    int T2;
+    /// Field x
+    int x;
+
+    /// Field y
+    int y;
+
+    /// The methods.
+    ///!! Methods
+  
+    /// Method foo
+    void foo( int i );
+
+    /// Method bar
+    void bar( float j );
 };
 
 
-/// More
-template<typename T1>
-T<T1>::T( int y )
-{
-}
+/// Global
+int global;
