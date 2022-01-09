@@ -2,25 +2,21 @@
 /// Struct Thing
 struct Thing
 {
+    /// The methods.
+    ///!! 2 Methods
+  
+    /// Method foo
+    ///
+    /// @param i Integer
+    void foo( int i );
+
     /// The fields.
-    ///!! Fields
+    ///!! 2 Fields
 
     /// Field x
     int x;
-
-    /// Field y
-    int y;
-
-    /// The methods.
-    ///!! Methods
-  
-    /// Method foo
-    void foo( int i );
-
-    /// Method bar
-    void bar( float j );
 };
 
 
-/// Global
+/// This is a bad global integer.
 int global;

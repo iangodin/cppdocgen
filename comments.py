@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#! /usr/bin/env python3
 
 import pathlib
 import re
@@ -321,9 +321,9 @@ def group_globals( decls, parent ):
         ty = cursor_to_type( cursor )
         if ty in [ 'class', 'struct' ]:
             typegroup.append( ( cursor, group_childrens( children, cursor ) ) )
-        elif ty in ['function' ]:
+        elif ty == 'function':
             funcgroup.append( ( cursor, group_childrens( children, cursor ) ) )
-        elif ty in ['variable' ]:
+        elif ty == 'variable':
             vargroup.append( ( cursor, group_childrens( children, cursor ) ) )
         else:
             othergroup.append( ( cursor, group_childrens( children, cursor ) ) )
@@ -341,16 +341,69 @@ def group_globals( decls, parent ):
     add( othergroup, 'Others' )
     return newchildren
 
-def group_other( decls, parent ):
-    if parent and parent.kind == CursorKind.TRANSLATION_UNIT:
-        return group_globals( decls, parent )
+def group_class( decls, parent ):
+    constructorgroup = []
+    destructorgroup = []
+    methodgroup = []
+    fieldgroup = []
+    othergroup = []
+    group = None
+    group_cursor = None
 
+    newchildren = []
+
+    for ( cursor, children ) in decls:
+        ty = cursor_to_type( cursor )
+        if group != None and ty != 'group':
+            group.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'constructor':
+            constructorgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'destructor':
+            destructorgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'method':
+            methodgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'field':
+            fieldgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'group':
+            if group:
+                newchildren.append( ( group_cursor, group ) )
+            group = []
+            group_cursor = cursor
+        else:
+            othergroup.append( ( cursor, group_childrens( children, cursor ) ) )
+
+    if group:
+        newchildren.append( ( group_cursor, group ) )
+
+    def add( group, name ):
+        if group:
+            start = min( [ x[0].extent.start for x in group ], key = lambda x: x.offset  )
+            end = max( [ x[0].extent.end for x in group ], key = lambda x: x.offset )
+            extent = SourceRange.from_locations( start, end )
+            newchildren.append( ( FakeToken( name, cursor, extent ), group ) )
+
+    add( constructorgroup, 'Constructors' )
+    add( destructorgroup, 'Destructors' )
+    add( methodgroup, 'Methods' )
+    add( fieldgroup, 'Fields' )
+    add( othergroup, 'Others' )
+
+    return newchildren
+
+def group_other( decls, parent ):
     newchildren = []
     for ( cursor, children ) in decls:
         newchildren.append( ( cursor, group_childrens( children, cursor ) ) )
     return newchildren
 
 def group_childrens( decls, parent = None ):
+    if parent:
+        if parent.kind == CursorKind.TRANSLATION_UNIT:
+            return group_globals( decls, parent )
+        elif parent.kind == CursorKind.CLASS_DECL:
+            return group_class( decls, parent )
+        elif parent.kind == CursorKind.STRUCT_DECL:
+            return group_class( decls, parent )
     return group_other( decls, parent )
 
 def insert_groups( tree, groups ):
@@ -423,10 +476,10 @@ def merge_decl_tree( master, tree ):
         if inmaster:
             inmaster['comments'] += node['comments']
             inmaster['location'] += node['location']
+            merge_decl_tree( inmaster['children'], node['children'] )
         else:
             inmaster = node.copy()
             master.append( inmaster )
-        merge_decl_tree( inmaster['children'], node['children'] )
 
 def dump_tree( tree, indent = 0 ):
     tabs = '  ' * indent
@@ -437,7 +490,7 @@ def dump_tree( tree, indent = 0 ):
 
 def dump_decl( decl ):
     ext = ( decl.extent.start.offset, decl.extent.end.offset )
-    pprint( ( decl.spelling, sem_name( decl ), ext ) )
+    pprint( ( decl.spelling, ext ) )
 
 def gather_comments( tu, files ):
     decl_cmts_list = []
@@ -479,12 +532,7 @@ def gather_comments( tu, files ):
         # Create a tree of declarations (including groups).
         # The tree is created from the extents of each declaration/group.
         tree = create_decl_tree( decl_list )
-        #print( "DECL_TREE" )
-        #dump_tree( tree )
-        #print( '----------' )
-
-        tree = group_childrens( tree )
-        print( "DECL_TREE grouped" )
+        print( "DECL_TREE" )
         dump_tree( tree )
         print( '----------' )
 
@@ -498,11 +546,16 @@ def gather_comments( tu, files ):
             pprint( ( sem_name( item[0] ), item[1] ) )
         print( '----------' )
 
+        tree = group_childrens( tree )
+        print( "DECL_TREE GROUPED" )
+        dump_tree( tree )
+        print( '----------' )
+
         # Assign comments to declarations
-        decl_cmts2 = assign_comments2( tree, { x[0]: x[1] for x in comments } )
-        #print( "DECL_CMTS2" )
-        #pprint( decl_cmts2, sort_dicts=False )
-        #print( '----------' )
+        decl_cmts = assign_comments2( tree, decl_cmts )
+        print( "DECL_CMTS2" )
+        pprint( decl_cmts, sort_dicts=False )
+        print( '----------' )
 
         # Added any missing declarations with empty comment list.
         # This way all declarations will be present, even if they are not commented.
@@ -515,7 +568,8 @@ def gather_comments( tu, files ):
         #print( '----------' )
 
         # Finally add all of the decl_cmts2 into the final list
-        merge_decl_tree( decl_cmts_list, decl_cmts2 )
+        print( "MERGE!!!!!!!!!!!!!!!!!!!!!!!!" )
+        merge_decl_tree( decl_cmts_list, decl_cmts )
         # Finally add all of the decl_cmts into the final list
         #for ( cursor, comments ) in decl_cmts.items():
         #    assert cursor.canonical, "missing canonical " + str( cursor )

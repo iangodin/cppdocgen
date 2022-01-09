@@ -267,10 +267,10 @@ def main():
     files = [str( inc.include.name ) for inc in tu.get_includes() if topdir in path_from_include( inc ).parents]
     files.insert( 0, tu.spelling )
 
-    cmts = gather_comments( tu, files )
+    nodes = gather_comments( tu, files )
 
     db = CPPDatabase( 'cppinfo.db' )
-    db.insert_records( cmts )
+    db.insert_records( nodes )
     db.close()
 
 #    output = pathlib.Path( 'cppinfo.json' )

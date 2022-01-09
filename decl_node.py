@@ -33,7 +33,7 @@ def decl_node( key, cursor ):
         'key': key,
         'kind': cursor_to_type( cursor ),
         'link': '',
-        'location': [],
+        'location': [ cursor.location ],
         'type': type_node( cursor.type ),
         'result': type_node( cursor.result_type ),
         'access': access_name( cursor.access_specifier ),

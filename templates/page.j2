@@ -10,7 +10,6 @@
 <div class="wh-100 px-3 scrollbar-hidden">
   {{- node.auto }}
   {{- node.user }}
-
   {%- for group in node.children %}
     <section class="group">
     <h2 class="badge rounded-pill bg-dark text-white w-100">{{group.name}}</h2>
@@ -21,8 +20,12 @@
         <h3 class="my-2">{{n.name}}</h3>
         <hr class="border-dark opacity-100">
         <div class="mx-3">
-        {{- n.auto }}
-        {%- if n.kind not in ['class','struct','namespace','global'] %}{{ n.user }}{%- endif %}
+          {%- if n.decl %}
+          <pre class="highlight"><code class="language-cpp hljs">{{- n.decl }};</code></pre>
+          {%- endif %}
+        {%- if n.kind not in ['class','struct','namespace','global'] %}
+        {{ n.comments }}
+        {%- endif %}
         </div>
       </section>
     {%- endfor %}

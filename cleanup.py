@@ -12,6 +12,7 @@ doxy_brief = re.compile( r'[\s]*@brief(.*)' )
 doxy_param = re.compile( r'[\s]*@param[\s]+([\w]+)[\s]*(.*)' )
 
 def doxy_filter( lines ):
+    pprint( ( "DOXY", lines ) )
     found_param = False
     result = []
     for line in lines:
@@ -53,27 +54,27 @@ class Cleanup:
                 'pymdownx.highlight',
             ], extension_configs = configs )
 
-    def __call__( cleaner, node ):
-        mdown = doxy_filter( cleaner.cleanup_comments( node ) )
-        mdown = cleaner.convert_to_markdown( mdown )
+    def __call__( cleaner, cmts ):
+        if cmts == '':
+            return cmts
+        clean = cleaner.cleanup_comments( cmts.splitlines() )
+        doxy = doxy_filter( clean )
+        mdown = cleaner.convert_to_markdown( doxy )
+        mdhtml = cleaner.md.convert( '\n'.join( mdown ) )
+        pprint( ( cmts, clean, doxy, mdown, mdhtml ) )
+        return mdhtml
 
-        node['user_doc'] = cleaner.md.convert( '\n'.join( mdown ) ).splitlines()
-
-        display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
-        node['auto_doc'] = cleaner.md.convert( '\n'.join( display( node ) ) ).splitlines()
+        #display = getattr( cleaner, 'display_' + node['kind'], cleaner.display_default )
+        #node['auto_doc'] = cleaner.md.convert( '\n'.join( display( node ) ) ).splitlines()
 
         # Keep the children at the end of the node dictionary
-        if 'children' in node:
-            c = node['children']
-            del node['children']
-            node['children'] = c
+        #if 'children' in node:
+        #    c = node['children']
+        #    del node['children']
+        #    node['children'] = c
 
-    def cleanup_comments( cleaner, node ):
-        lines = []
-        if 'comments' in node:
-            lines = node['comments']
-            pprint( lines )
-            lines = cleaner.normalize_spaces( lines )
+    def cleanup_comments( cleaner, lines ):
+        lines = cleaner.normalize_spaces( lines )
         return lines
 
     def convert_to_markdown( cleaner, lines ):
