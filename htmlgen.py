@@ -1,6 +1,7 @@
 
 import sqlite3
 import yaml
+import os
 from pprint import pprint
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -22,8 +23,9 @@ class HTMLGenerator:
         self.topdir = topdir
         self.connection = sqlite3.connect( dbfile )
         self.cursor = self.connection.cursor()
+        loc = os.path.join( os.path.dirname( os.path.realpath( __file__ ) ), "templates" )
         self.env = Environment(
-            loader = FileSystemLoader( "templates" )
+            loader = FileSystemLoader( loc )
         )
         self.env.filters['filter_kind'] = filter_kind
         self.env.globals['list'] = list
