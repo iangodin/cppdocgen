@@ -28,12 +28,14 @@ def decl_location( cursor ):
     return [ loc ]
 
 def decl_node( key, name, cursor ):
+#    if isinstance( cursor, Cursor ) and cursor != cursor.canonical:
+#        return None
     node = {
         'name': name,
         'key': key,
         'kind': cursor_to_type( cursor ),
         'link': '',
-        'location': [ cursor.location ],
+        'location': [ decl_location( cursor ) ],
         'type': type_node( cursor.type ),
         'result': type_node( cursor.result_type ),
         'access': access_name( cursor.access_specifier ),

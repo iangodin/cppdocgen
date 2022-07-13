@@ -9,14 +9,23 @@ htmlTypes = [ 'global', 'class', 'struct', 'namespace' ]
 
 doxy_class = re.compile( r'[\s]*@class .*' )
 doxy_brief = re.compile( r'[\s]*@brief(.*)' )
+doxy_return = re.compile( r'[\s]*@return(.*)' )
 doxy_param = re.compile( r'[\s]*@param[\s]+([\w]+)[\s]*(.*)' )
+doxy_tparam = re.compile( r'[\s]*@tparam[\s]+([\w]+)[\s]*(.*)' )
 
 def doxy_filter( lines ):
     found_param = False
+    found_tparam = False
     result = []
     for line in lines:
         match = doxy_brief.match( line )
         if match:
+            result.append( match.group( 1 ) )
+            result.append( '' )
+            continue
+        match = doxy_return.match( line )
+        if match:
+            result.append( 'Return:' )
             result.append( match.group( 1 ) )
             result.append( '' )
             continue
@@ -28,6 +37,13 @@ def doxy_filter( lines ):
             if not found_param:
                 result.append( 'Parameters:' )
                 found_param = True
+            result.append( '  ' + match.group( 1 ) + ' => ' + match.group( 2 ) )
+            continue
+        match = doxy_tparam.match( line )
+        if match:
+            if not found_tparam:
+                result.append( 'Template Parameters:' )
+                found_tparam = True
             result.append( '  ' + match.group( 1 ) + ' => ' + match.group( 2 ) )
             continue
         result.append( line )

@@ -108,7 +108,8 @@ def main():
     if not tu:
         parser.error("unable to load input")
 
-    pprint(('diags', [get_diag_info(d) for d in  tu.diagnostics]))
+    for diag in tu.diagnostics:
+        print( diag )
 
     for tok in tu.cursor.get_tokens():
         if tok.spelling == 'inline':

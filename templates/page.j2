@@ -4,7 +4,7 @@
   {%- if node.kind == 'global' %}
   <h1 class="text-center">{{title}}</h1>
   {%- else %}
-  <h1 class="text-center">{{title}} {{node.name}}</h1>
+  <h1 class="text-center">{{title}} {{node.name|e}}</h1>
   {%- endif %}
   <hr class="border-dark opacity-100">
 <div class="wh-100 px-3 scrollbar-hidden">
@@ -14,13 +14,13 @@
   {{- node.comments }}
   {%- for group in node.children %}
     <section class="group">
-    <h2 class="badge rounded-pill bg-dark text-white w-100">{{group.name}}</h2>
+    <h2 class="badge rounded-pill bg-dark text-white w-100">{{group.name|e}}</h2>
     {{- group.comments }}
     {%- for n in group.children %}
       <section class="member px-2">
         {%- set aid = anchor( n ) %}
         {% if aid %}<a id="{{aid}}"></a>{% endif %}
-        <h3 class="my-2">{{n.name}}</h3>
+        <h3 class="my-2">{{n.name|e}}<small>{{n.kind}}</small></h3>
         <hr class="border-dark opacity-100">
         <div class="mx-3">
           {%- if n.decl %}

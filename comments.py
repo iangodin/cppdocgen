@@ -2,6 +2,7 @@
 
 import pathlib
 import re
+import copy
 from pprint import pprint
 from decl_node import decl_node, decl_location
 from node_type import cursor_to_type
@@ -36,10 +37,14 @@ class FakeCursor:
         self.kind = cursor.kind
         self.location = extent.start
         self.spelling = str( self.location.file.name )
+        self.displayname = self.spelling
         self.extent = extent
         self.cursor = cursor
+        self.type = cursor.type
+        self.result_type = cursor.result_type
         self.canonical = cursor.canonical
         self.semantic_parent = semparent if semparent else cursor.semantic_parent
+        self.access_specifier = AccessSpecifier.INVALID
         pass
 
     def get_children( self ):
@@ -48,27 +53,13 @@ class FakeCursor:
     def get_tokens( self ):
         return [ FakeToken( self.spelling, self, self.extent ) ]
 
-kind_sep = {
-    TokenKind.COMMENT: '#',
-    CursorKind.TEMPLATE_TYPE_PARAMETER: '?',
-    CursorKind.TEMPLATE_NON_TYPE_PARAMETER: '?',
-    CursorKind.TEMPLATE_NON_TYPE_PARAMETER: '?',
-    CursorKind.CONSTRUCTOR: '#',
-    CursorKind.DESTRUCTOR: '#',
-    CursorKind.CXX_ACCESS_SPEC_DECL: '#',
-    CursorKind.FIELD_DECL: '#',
-    CursorKind.CXX_METHOD: '#',
-    CursorKind.FUNCTION_TEMPLATE: '#',
-    CursorKind.FUNCTION_DECL: '#',
-    CursorKind.VAR_DECL: '#',
-    CursorKind.PARM_DECL: '#',
-}
-
-fragment_kind = [ 'group', 'variable', 'function', 'param', 'tparam', 'field', 'method', 'constructor', 'destructor' ]
+fragment_kind = [ 'group', 'variable', 'function', 'param', 'tparam', 'field', 'method', 'constructor', 'destructor', 'friend' ]
 
 def self_name( cursor ):
     if cursor.kind == CursorKind.TRANSLATION_UNIT:
         return ''
+    elif cursor.kind == CursorKind.FRIEND_DECL:
+        return self_name( next( cursor.get_children() ) )
     elif cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL:
         a = cursor.access_specifier
         if a == AccessSpecifier.PUBLIC:
@@ -89,16 +80,16 @@ def link_url( parent, node ):
         sep = '/' if node['kind'] not in fragment_kind else '#'
         if sep == '/' and parent == '/index':
             parent = '/global'
-        return parent + sep + node['name']
+        result = parent + sep + node['name']
+        return result
 
 def sem_name( cursor ):
     if isinstance( cursor, FakeToken ) or isinstance( cursor, Cursor ) or isinstance( cursor, FakeCursor ):
         if cursor.kind == CursorKind.TRANSLATION_UNIT:
             return ''
         else:
-            sep = kind_sep.get( cursor.kind, '/' )
             parent = sem_name( cursor.semantic_parent )
-            return parent + sep + self_name( cursor )
+            return parent + '/' + self_name( cursor )
     else:
         assert not cursor, 'unknown cursor type ' + str( type( cursor ) )
         return ''
@@ -170,8 +161,10 @@ decl_kinds = [
     CursorKind.FIELD_DECL,
     CursorKind.PARM_DECL,
     CursorKind.TEMPLATE_TYPE_PARAMETER,
+    CursorKind.TEMPLATE_NON_TYPE_PARAMETER,
     CursorKind.ENUM_CONSTANT_DECL,
     CursorKind.TYPE_ALIAS_DECL,
+    CursorKind.FRIEND_DECL,
     CursorKind.FUNCTION_DECL,
     CursorKind.FUNCTION_TEMPLATE,
     CursorKind.VAR_DECL,
@@ -180,16 +173,19 @@ decl_kinds = [
 ]
 
 decl_skip_children = [
+    CursorKind.FRIEND_DECL,
     CursorKind.COMPOUND_STMT,
     CursorKind.VAR_DECL,
 ]
 
 ignore_kinds = [
+    CursorKind.OVERLOADED_DECL_REF,
     CursorKind.MEMBER_REF,
     CursorKind.TEMPLATE_REF,
     CursorKind.TYPE_REF,
     CursorKind.NAMESPACE_REF,
     CursorKind.COMPOUND_STMT,
+    CursorKind.CXX_OVERRIDE_ATTR,
 ]
 
 def create_decls( cursor, topfile, extent, parent = None ):
@@ -201,7 +197,7 @@ def create_decls( cursor, topfile, extent, parent = None ):
     if k in decl_kinds:
         if k == CursorKind.TRANSLATION_UNIT:
             cursor = FakeCursor( cursor, extent )
-        elif k == CursorKind.TEMPLATE_TYPE_PARAMETER and cursor.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
+        elif k == CursorKind.TEMPLATE_TYPE_PARAMETER and k == CursorKind.TEMPLATE_NON_TYPE_PARAMETER and cursor.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
             cursor = FakeCursor( cursor, extent, parent )
         lst.append( cursor )
     elif k in ignore_kinds:
@@ -209,7 +205,7 @@ def create_decls( cursor, topfile, extent, parent = None ):
     elif k.is_expression():
         pass
     else:
-        print( "UNKNOWN KIND: " + cursor.kind.name + ' (' + cursor.spelling + ')' )
+        print( "UNKNOWN KIND: " + cursor.kind.name + ' (' + ' '.join( [x.spelling for x in cursor.get_tokens()] ) + ')' )
 
     if cursor.kind not in decl_skip_children:
         for c in cursor.get_children():
@@ -294,7 +290,6 @@ def insert_decl_tree( cursor, lst ):
             insert_decl_tree( cursor, children )
             inserted = True
         elif range_contains( rng, r ):
-            pprint( ( "WTF", cursor.spelling, csr.spelling ) )
             tmp = ( cursor, [ lst[i] ] )
             lst[i] = tmp
             inserted = True
@@ -315,41 +310,24 @@ def create_decl_tree( decls ):
     assign_parent_to_groups( lst, None )
     return lst
 
+def cleanup_groups( group ):
+    new_group = []
+    name_lookup = {}
+    for ( cursor, children ) in group:
+        name = self_name( cursor )
+        kids = name_lookup.get( name, None )
+        if kids != None:
+            kids += children
+        else:
+            name_lookup[name] = children
+            new_group.append( ( cursor, children ) )
+    return new_group
+
 def group_namespace( decls, parent ):
+    namegroup = []
     typegroup = []
     funcgroup = []
     vargroup = []
-    othergroup = []
-
-    for ( cursor, children ) in decls:
-        ty = cursor_to_type( cursor )
-        if ty in [ 'class', 'struct' ]:
-            typegroup.append( ( cursor, group_childrens( children, cursor ) ) )
-        elif ty == 'function':
-            funcgroup.append( ( cursor, group_childrens( children, cursor ) ) )
-        elif ty == 'variable':
-            vargroup.append( ( cursor, group_childrens( children, cursor ) ) )
-        else:
-            othergroup.append( ( cursor, group_childrens( children, cursor ) ) )
-
-    newchildren = []
-    def add( group, name ):
-        if group:
-            start = min( [ x[0].extent.start for x in group ], key = lambda x: x.offset  )
-            end = max( [ x[0].extent.end for x in group ], key = lambda x: x.offset )
-            extent = SourceRange.from_locations( start, end )
-            newchildren.append( ( FakeToken( name, cursor, extent ), group ) )
-    add( typegroup, 'Types' )
-    add( funcgroup, 'Functions' )
-    add( vargroup, 'Variables' )
-    add( othergroup, 'Others' )
-    return newchildren
-
-def group_class( decls, parent ):
-    constructorgroup = []
-    destructorgroup = []
-    methodgroup = []
-    fieldgroup = []
     othergroup = []
     group = None
     group_cursor = None
@@ -360,6 +338,58 @@ def group_class( decls, parent ):
         ty = cursor_to_type( cursor )
         if group != None and ty != 'group':
             group.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty in [ 'namespace' ]:
+            namegroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty in [ 'class', 'struct', 'typedef' ]:
+            typegroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'function':
+            funcgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'variable':
+            vargroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'group':
+            if group:
+                newchildren.append( ( group_cursor, group ) )
+            group = []
+            group_cursor = cursor
+        else:
+            othergroup.append( ( cursor, group_childrens( children, cursor ) ) )
+
+    if group:
+        newchildren.append( ( group_cursor, group ) )
+
+    def add( group, name ):
+        if group:
+            start = min( [ x[0].extent.start for x in group ], key = lambda x: x.offset  )
+            end = max( [ x[0].extent.end for x in group ], key = lambda x: x.offset )
+            extent = SourceRange.from_locations( start, end )
+            newchildren.append( ( FakeToken( name, cursor, extent ), group ) )
+
+    add( namegroup, 'Namespace' )
+    add( typegroup, 'Types' )
+    add( funcgroup, 'Functions' )
+    add( vargroup, 'Variables' )
+    add( othergroup, 'Others' )
+    return cleanup_groups( newchildren )
+
+def group_class( decls, parent ):
+    templategroup = []
+    constructorgroup = []
+    destructorgroup = []
+    methodgroup = []
+    fieldgroup = []
+    typegroup = []
+    othergroup = []
+    group = None
+    group_cursor = None
+
+    newchildren = []
+
+    for ( cursor, children ) in decls:
+        ty = cursor_to_type( cursor )
+        if group != None and ty != 'group':
+            group.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty == 'tparam':
+            templategroup.append( ( cursor, group_childrens( children, cursor ) ) )
         elif ty == 'constructor':
             constructorgroup.append( ( cursor, group_childrens( children, cursor ) ) )
         elif ty == 'destructor':
@@ -368,6 +398,8 @@ def group_class( decls, parent ):
             methodgroup.append( ( cursor, group_childrens( children, cursor ) ) )
         elif ty == 'field':
             fieldgroup.append( ( cursor, group_childrens( children, cursor ) ) )
+        elif ty in [ 'class', 'struct', 'typedef' ]:
+            typegroup.append( ( cursor, group_childrens( children, cursor ) ) )
         elif ty == 'group':
             if group:
                 newchildren.append( ( group_cursor, group ) )
@@ -391,13 +423,15 @@ def group_class( decls, parent ):
             extent = SourceRange.from_locations( start, end )
             newchildren.append( ( FakeToken( name, cursor, extent ), group ) )
 
+    add( typegroup, 'Types' )
+    add( templategroup, 'Template Parameters' )
     add( constructorgroup, 'Constructors' )
     add( destructorgroup, 'Destructors' )
     add( methodgroup, 'Methods' )
     add( fieldgroup, 'Fields' )
     add( othergroup, 'Others' )
 
-    return newchildren
+    return cleanup_groups( newchildren )
 
 def group_other( decls, parent ):
     newchildren = []
@@ -411,7 +445,10 @@ def group_childrens( decls, parent = None ):
             return group_namespace( decls, parent )
         elif parent.kind == CursorKind.NAMESPACE:
             return group_namespace( decls, parent )
+            return group_class( decls, parent )
         elif parent.kind == CursorKind.CLASS_DECL:
+            return group_class( decls, parent )
+        elif parent.kind == CursorKind.CLASS_TEMPLATE:
             return group_class( decls, parent )
         elif parent.kind == CursorKind.STRUCT_DECL:
             return group_class( decls, parent )
@@ -446,22 +483,26 @@ def find_preceding_decl( parent, decls, loc ):
             return find_preceding_decl( name, children, loc )
     return parent
 
-def convert_to_nodes( decls, comments, parent = { 'key': [], 'link': '' } ):
-    result = []
-    for ( cursor, children ) in decls:
-        parent_link = parent['link']
-        name = self_name( cursor )
-        key = parent['key'] + [ name ]
-        node = decl_node( key, name, cursor.canonical )
-        if node:
-            node['link'] = link_url( parent_link, node )
-            if cursor in comments:
-                node['comments'] += comments[cursor]
-            node['children'] = convert_to_nodes( children, comments, node )
-            result.append( node )
+def convert_to_nodes( decls, comments ):
+    def cnvt_nodes( nodes, parent ):
+        result = []
+        for ( cursor, children ) in nodes:
+            parent_link = parent['link']
+            name = self_name( cursor.canonical )
+            key = parent['key'] + [ name ]
+            node = decl_node( key, name, cursor )
+            if node:
+                node['link'] = link_url( parent_link, node )
+                if cursor in comments:
+                    node['comments'] += comments[cursor]
+                node['children'] = cnvt_nodes( children, node )
+                if node['kind'] != 'group' or node['children']:
+                    result.append( node )
+        return result
+    result = cnvt_nodes( decls, { 'key': [], 'link': '' } )
     return result
-
-def assign_comments( decls, comments ):
+    
+def assign_comments( decls, comments, mapping = {} ):
     result = {}
     top = decls[0][0]
     for ( tag, cmt, loc ) in comments:
@@ -470,10 +511,18 @@ def assign_comments( decls, comments ):
             decl = find_preceding_decl( top, decls, loc )
         else:
             decl = find_following_decl( top, decls, loc )
-        key = decl
+        key = decl.canonical
         lst = result.get( key, [] )
         lst.append( cmt )
         result[key] = lst
+    return result
+
+def remove_unused_access( tree, accesses ):
+    result = []
+    for ( cursor, children ) in tree:
+        if cursor.kind == CursorKind.CXX_ACCESS_SPEC_DECL and cursor not in accesses:
+            continue
+        result.append( ( cursor, remove_unused_access( children, accesses ) ) )
     return result
 
 def merge( master, more ):
@@ -486,18 +535,20 @@ def merge_decl_tree( master, tree ):
     for node in tree:
         inmaster = next( filter( lambda x: x['name'] == node['name'], master ), None )
         if inmaster:
+            #print( "MERGING " + inmaster['kind'] + ' ' + inmaster['name'] + ' ' + str(len( node['children'] ) )
             inmaster['comments'] += node['comments']
             inmaster['location'] += node['location']
             merge_decl_tree( inmaster['children'], node['children'] )
         else:
-            inmaster = node.copy()
+            inmaster = copy.deepcopy( node )
+            #print( "APPENDING " + inmaster['kind'] + ' ' + inmaster['name'] )
             master.append( inmaster )
 
 def dump_tree( tree, indent = 0 ):
     tabs = '  ' * indent
     for ( cursor, children ) in tree:
         ext = ( cursor.extent.start.offset, cursor.extent.end.offset )
-        print( tabs + cursor.kind.name + ' ' + str( ext ) )
+        print( tabs + cursor.kind.name + ' ' + cursor.spelling + ' ' + str( ext ) )
         dump_tree( children, indent + 1 )
 
 def dump_decl( decl ):
@@ -508,6 +559,7 @@ def gather_comments( tu, files ):
     decl_cmts_list = []
     parents = {}
     for filename in files:
+        print( "========== " + filename )
         file_extent = get_file_extent( tu, File.from_name( tu, filename ) )
 
         # decl_list is a list of pairs ( cursor, extent )
@@ -557,6 +609,10 @@ def gather_comments( tu, files ):
         #for item in decl_cmts.items():
         #    pprint( ( sem_name( item[0] ), item[1] ) )
         #print( '----------' )
+
+        access_comments = set( [c for c in decl_cmts if c.kind == CursorKind.CXX_ACCESS_SPEC_DECL] )
+        #print( "ACCESS_COMMENTS", len( access_comments ) )
+        tree = remove_unused_access( tree, set( access_comments ) )
 
         tree = group_childrens( tree )
         #print( "DECL_TREE GROUPED" )

@@ -8,9 +8,11 @@
 {%- endif %}
 {%- for group in node.children %}
   <div class="badge rounded-pill bg-dark text-white">{{group.name}}</div>
-{%- for n in group.children %}
-    <a class="btn-link text-black my-1" href="{{n.link}}">{{n.name}}</a>
-{%- endfor %}
+  <ul>
+  {%- for n in group.children %}
+    <li><a class="btn-link text-black my-1" href="{{n.link}}">{{n.name}}</a></li>
+  {%- endfor %}
+  </ul>
 {%- endfor %}
   <div class="my-5"></div>
 </div>

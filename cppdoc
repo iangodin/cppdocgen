@@ -192,8 +192,6 @@ def main():
     filename, *clang_args = args
     topdir = pathlib.Path( opts.dir ).resolve()
 
-    pprint( ( "CLANG ARGS", clang_args ) )
-
     index = Index.create()
     tu = index.parse( filename, clang_args ) #, options=TranslationUnit.PARSE_SKIP_FUNCTION_BODIES)
     if not tu:

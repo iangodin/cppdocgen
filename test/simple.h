@@ -2,6 +2,7 @@
 /// Simple class.
 class SimpleClass
 {
+/// SimpleClass public members
 public:
     /// Simple constructor.
     SimpleClass( void );

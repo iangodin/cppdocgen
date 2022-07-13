@@ -20,6 +20,7 @@ simplify = [
     ( re.compile( r'[(]\n  [)]' ), r'( void )' ),
     ( re.compile( r'[(]\n  ([^\n]*) [)]' ), r'( \1 )' ),
     ( re.compile( r':: [*]' ), r'::*' ),
+    ( re.compile( r'[)]([a-z])' ), r') \1' ),
 ]
 
 def get_decl( cursor ):

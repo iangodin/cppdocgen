@@ -1,22 +1,13 @@
 
-/// Struct Thing
-struct Thing
+
+class Foo
 {
-    /// The methods.
-    ///!! 2 Methods
-  
-    /// Method foo
-    ///
-    /// @param i Integer
-    void foo( int i );
-
-    /// The fields.
-    ///!! 2 Fields
-
-    /// Field x
-    int x;
+public:
+    /// Comment 1
+    void bar( void );
 };
 
-
-/// This is a bad global integer.
-int global;
+/// Comment 2
+void Foo::bar( void )
+{
+}

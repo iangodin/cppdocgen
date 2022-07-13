@@ -6,6 +6,15 @@ from pprint import pprint
 from pathlib import Path
 from cleanup import Cleanup
 from jinja2 import Environment, FileSystemLoader, select_autoescape
+from html import escape
+
+order = [ "Template Parameters", "Namespaces", "Types", "Parameters", "Constructors", "Destructor", "Fields", "Public", "Methods", "Friends", "Protected" ]
+
+def group_order( name ):
+    try:
+        return str( order.index( name ) )
+    except:
+        return name
 
 def html_file( node ):
     link = node['link']
@@ -57,10 +66,11 @@ class HTMLGenerator:
         rows = self.cursor.execute( f'SELECT name, key, link, kind, decl, comments FROM nodes WHERE parent="{parent}";' ).fetchall();
         nodes = []
         for row in rows:
-            child = { 'name': row[0], 'key': row[1], 'link': row[2], 'kind': row[3], 'decl': row[4], 'comments': row[5] }
+            child = { 'name': row[0], 'key': row[1], 'link': row[2], 'kind': row[3], 'decl': escape( row[4] ), 'comments': row[5] }
             child['comments'] = self.cleaner( child['comments'] )
             child['children'] = self.load_nodes( child['key'] )
             nodes.append( child )
+        #nodes.sort( key=lambda n: group_order( n['name'] ) )
         return nodes
 
     def generate_node( self, node, parents ):
