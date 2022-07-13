@@ -2,7 +2,20 @@
 
 from pathlib import Path
 from htmlgen import HTMLGenerator
+from optparse import OptionParser, OptionGroup
 
-gen = HTMLGenerator( 'cppinfo.db', Path( 'site' ) )
+global opts
+
+parser = OptionParser("usage: %prog [options] {filename} [clang-args*]")
+parser.add_option("", "--db", dest="db",
+				  help="Database containing documentation",
+				  metavar="DBFILE", type=str, default="cppdoc.db" )
+parser.add_option("", "--site", dest="site",
+				  help="Directory where site is created",
+				  metavar="DIR", type=str, default="site" )
+parser.disable_interspersed_args()
+(opts, args) = parser.parse_args()
+
+gen = HTMLGenerator( opts.db, Path( opts.site ) )
 gen.generate()
 
