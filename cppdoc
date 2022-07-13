@@ -23,8 +23,11 @@ def main():
 
     parser = OptionParser("usage: %prog [options] {filename} [clang-args*]")
     parser.add_option("", "--dir", dest="dir",
-                      help="Document files inside this directory",
-                      metavar="N", type=str, default=None)
+                      help="Directory where source files are found",
+                      metavar="DIR", type=str, default="." )
+    parser.add_option("", "--db", dest="db",
+                      help="Database to store documentation in",
+                      metavar="DBFILE", type=str, default="cppdoc.db" )
     parser.disable_interspersed_args()
     (opts, args) = parser.parse_args()
 
@@ -51,7 +54,7 @@ def main():
 
     #pprint( cppinfo, sort_dicts=False )
 
-    cppdb = CPPDatabase( 'cppinfo.db' )
+    cppdb = CPPDatabase( opts.db )
     cppdb.write( cppinfo )
     cppdb.close()
 

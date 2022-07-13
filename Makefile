@@ -1,15 +1,15 @@
 .PHONY: test smalltest
 
-default: test
+default: test smalltest
 
 test:
-	rm -f cppinfo.db
-	rm -rf site/global site/index.html
-	./cppdoc --dir test -- test/test.cpp
-	./gendoc
+	rm -f test.db
+	rm -rf test-site
+	./cppdoc --dir test --db test.db -- test/test.cpp
+	./gendoc --db test.db --site test-site
 
 smalltest:
-	rm -f cppinfo.db
-	rm -rf site/global site/index.html
-	./cppdoc --dir test -- -Wdocumentation --std=c++11 test/small.cpp
-	./gendoc
+	rm -f small.db
+	rm -rf small-site
+	./cppdoc --dir test --db small.db -- -Wdocumentation --std=c++11 test/small.cpp
+	./gendoc --db small.db --site small-site
